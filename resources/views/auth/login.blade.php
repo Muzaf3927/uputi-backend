@@ -3,98 +3,179 @@
 @section('content')
     <style>
         body {
-            background: url('/images/register.jpg') no-repeat center center fixed;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/images/register.jpg') no-repeat center center fixed;
             background-size: cover;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
         }
 
-        .login-container {
-            /*background-color: rgba(255, 255, 255, 0.95);*/
-            /*padding: 30px;*/
-            /*border-radius: 20px;*/
-            /*box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);*/
-            /*max-width: 450px;*/
-            /*margin: 80px auto;*/
-            background-color: rgba(255, 255, 255, 0.5);
-            padding: 30px;
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem;
             max-width: 500px;
-            margin: 60px auto;
+            margin: 2rem auto;
+            transform: translateY(0);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            border-top: 5px solid #4361ee;
         }
 
-        .login-container h2 {
-            /*text-align: center;*/
-            /*margin-bottom: 25px;*/
-            /*color: #2c3e50;*/
-            /*font-weight: bold;*/
+        .auth-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .auth-title {
             text-align: center;
-            margin-bottom: 25px;
-            color: #2c3e50;
-            font-weight: bold;
+            margin-bottom: 2rem;
+            color: #2b2d42;
+            font-weight: 700;
+            font-size: 2rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .auth-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #4361ee, #3a0ca3);
+            border-radius: 2px;
         }
 
         .form-control {
-            /*background-color: rgba(255, 255, 255, 0.7);*/
-            /*border: 1px solid #ccc;*/
-            /*color: #2c3e50;*/
-            background-color: rgba(255, 255, 255, 0.7);
-            border: 1px solid #ccc;
-            color: #2c3e50;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            height: auto;
         }
 
         .form-control:focus {
-            /*background-color: rgba(255, 255, 255, 0.85);*/
-            /*border-color: #3498db;*/
-            /*box-shadow: 0 0 6px rgba(52, 152, 219, 0.5);*/
-            background-color: rgba(255, 255, 255, 0.85);
-            box-shadow: 0 0 5px rgba(46, 204, 113, 0.7);
-            border-color: #2ecc71;
+            background-color: white;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
         }
 
-        .btn-primary {
-            background-color: #2ecc71;
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .btn-auth {
+            background: linear-gradient(135deg, #4361ee, #3a0ca3);
             border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
             width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
         }
 
-        .btn-primary:hover {
-            background-color: #2980b9;
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+            background: linear-gradient(135deg, #3a56e8, #2f0b8a);
         }
 
-        .alert {
+        .alert-danger {
+            background-color: #ff6b6b;
+            color: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 1.5rem;
             text-align: center;
+            font-weight: 500;
+            animation: fadeIn 0.5s ease;
+            border-left: 4px solid #d00000;
         }
 
-        label {
-            font-weight: bold;
-            color: black;
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .form-group i {
+            position: absolute;
+            right: 15px;
+            top: 42px;
+            color: #6c757d;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .auth-footer a {
+            color: #4361ee;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .auth-footer a:hover {
+            color: #3a0ca3;
+            text-decoration: underline;
         }
     </style>
 
-    <div class="login-container">
-        <h2>Вход</h2>
+    <div class="auth-container">
+        <h2 class="auth-title">Profilga kirish</h2>
 
         @if ($errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ $errors->first() }}
+            </div>
         @endif
 
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" name="email" id="email" class="form-control" required>
+            <div class="form-group">
+                <label for="email" class="form-label">Pochta</label>
+                <input type="email" name="email" id="email" class="form-control" required placeholder="Pochtani kiriting">
+                <i class="fas fa-envelope"></i>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label for="password" class="form-label">Parol</label>
-                <input type="password" name="password" id="password" class="form-control" required>
+                <input type="password" name="password" id="password" class="form-control" required placeholder="Parolni kiriting">
+                <i class="fas fa-lock"></i>
             </div>
 
-            <button type="submit" class="btn btn-primary">Kirish</button>
+            <button type="submit" class="btn btn-auth">
+                <i class="fas fa-sign-in-alt me-2"></i> Kirish
+            </button>
+
+            <div class="auth-footer">
+                Profilingiz yo'qmi? <a href="{{ route('register') }}">Ro'yxatdan o'ting</a>
+            </div>
         </form>
     </div>
 @endsection

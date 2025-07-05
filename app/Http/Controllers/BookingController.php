@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Trip;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 
 class BookingController extends Controller
 {
@@ -21,30 +23,42 @@ class BookingController extends Controller
             ->first();
 
         if ($existing) {
-            return back()->with('error', 'Вы уже отправили заявку на эту поездку.');
+            return response()->json(['message' => 'Вы уже отправили заявку'], 403);
         }
 
-        Booking::create([
+        $booking = Booking::create([
             'trip_id' => $trip->id,
             'user_id' => Auth::id(),
             'seats' => $request->seats,
             'status' => 'pending',
         ]);
 
-        return redirect()->back()->with('success', 'Заявка отправлена');
+        return response()->json([
+            'message' => 'Заявка отправлена',
+            'booking' => $booking,
+        ], 201);
     }
 
     public function update(Request $request, Booking $booking)
     {
-        $this->authorize('update', $booking->trip); // Только водитель может подтверждать
+        $user = Auth::user();
+        $trip = $booking->trip;
 
-        $request->validate([
-            'status' => 'required|in:confirmed,declined',
+
+        if ($user->id !== $trip->user_id) {
+            return response()->json(['message' => 'Нет доступа'], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:pending,confirmed,declined,cancelled',
         ]);
 
-        $booking->update(['status' => $request->status]);
+        $booking->update(['status' => $validated['status']]);
 
-        return back()->with('success', 'Статус обновлен');
+        return response()->json([
+            'message' => 'Статус обновлен',
+            'status' => $booking->status
+        ], 201);
     }
 }
 

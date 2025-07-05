@@ -8,17 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class TripController extends Controller
 {
-    public function index()
-    {
-        $trips = Trip::with('driver')->where('status', 'active')->orderBy('date')->get();
-        return view('trips.index', compact('trips'));
-    }
-
-    public function create()
-    {
-        return view('trips.create');
-    }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -28,10 +17,13 @@ class TripController extends Controller
             'time' => 'required',
             'seats' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
-            'note' => 'nullable|string'
+            'note' => 'nullable|string',
+            'carModel' => 'nullable|string',
+            'carColor' => 'nullable|string',
+            'numberCar' => 'nullable|string',
         ]);
 
-        Trip::create([
+        $trip = Trip::create([
             'user_id' => Auth::id(),
             'from_city' => $request->from_city,
             'to_city' => $request->to_city,
@@ -40,9 +32,31 @@ class TripController extends Controller
             'seats' => $request->seats,
             'price' => $request->price,
             'note' => $request->note,
+            'carModel' => $request->carModel,
+            'carColor' => $request->carColor,
+            'numberCar' => $request->numberCar,
+        ]);
+        return response()->json([
+            'message' => 'Поездка создана!',
+            'trip' => $trip,
+        ]);
+    }
+
+    public function myTrips()
+    {
+        $trips = Trip::where('user_id', Auth::id())->orderByDesc('date')->get();
+        return response()->json([
+            'trips' => $trips
         ]);
 
-        return redirect()->route('trips.index')->with('success', 'Поездка создана!');
+    }
+
+    public function index()
+    {
+        $trips = Trip::with('driver')->where('status', 'active')->orderBy('date')->get();
+        return response()->json([
+            'trips' => $trips
+        ]);
     }
 }
 

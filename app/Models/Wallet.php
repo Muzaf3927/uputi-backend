@@ -3,13 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Wallet extends Model
 {
-    use HasFactory;
-
     protected $fillable = ['user_id', 'balance'];
+
+    protected $attributes = ['balance' => 0.00];
 
     public function user()
     {
@@ -20,5 +19,5 @@ class Wallet extends Model
     {
         return $this->hasMany(Transaction::class);
     }
-
 }
+
