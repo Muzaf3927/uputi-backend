@@ -3,12 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Rating extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'from_user_id', 'to_user_id', 'trip_id', 'rating', 'comment'
     ];
@@ -27,5 +24,6 @@ class Rating extends Model
     {
         return $this->belongsTo(Trip::class);
     }
+
 }
 

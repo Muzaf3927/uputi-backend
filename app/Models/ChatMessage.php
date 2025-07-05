@@ -1,15 +1,13 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ChatMessage extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['trip_id', 'sender_id', 'receiver_id', 'message'];
+    protected $fillable = [
+        'trip_id', 'sender_id', 'receiver_id', 'message',
+    ];
 
     public function sender()
     {
@@ -26,4 +24,3 @@ class ChatMessage extends Model
         return $this->belongsTo(Trip::class);
     }
 }
-
