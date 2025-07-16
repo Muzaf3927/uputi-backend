@@ -11,18 +11,21 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required',
-            'phone' => 'required|min:9|max:9',
-            'password' => 'required|min:6|confirmed',
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|min:9|max:9|unique:users,phone',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
-         User::updateOrcreate([
+        $user = User::create([
             'name' => $request->name,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
         ]);
 
-        return response()->json(['User successfully registered', 'success'], 201);
+        return response()->json([
+            'message' => 'User successfully registered',
+            'user' => $user
+        ], 201);
     }
 
     public function login(Request $request)
@@ -50,7 +53,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request) //восстановить пароль
     {
         $request->validate([
             'phone' => 'required|min:9|max:9|exists:users,phone',
@@ -67,6 +70,25 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Password reset successful', 'success'], 201);
+    }
+
+    public function changePassword(Request $request)  //смена пароль в профиле
+    {
+        $request->validate([
+            'password' => 'required',
+            'new_password' => 'required|min:6',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 403);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json(['message' => 'Password changed successfully']);
     }
 
     public function logout(Request $request)

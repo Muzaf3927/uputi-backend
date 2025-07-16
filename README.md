@@ -1,61 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# BlaBlaCar MVP API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Ride-sharing application API built with Laravel 12 and Laravel Sanctum.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- 🔐 **Authentication**: Registration, login, password reset
+- 🚗 **Trips Management**: Create, update, delete trips
+- 📅 **Booking System**: Request and manage bookings
+- 💬 **Chat System**: Real-time messaging between users
+- ⭐ **Rating System**: User ratings and reviews
+- 💰 **Wallet System**: Balance management and transactions
+- 🔔 **Notifications**: Real-time notifications
+- ⚙️ **Settings**: User preferences management
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Backend**: Laravel 12
+- **Authentication**: Laravel Sanctum
+- **Database**: MySQL/PostgreSQL
+- **API**: RESTful API
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Clone the repository
+```bash
+git clone <repository-url>
+cd blablacar-mvp
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2. Install dependencies
+```bash
+composer install
+npm install
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+3. Environment setup
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Laravel Sponsors
+4. Database setup
+```bash
+php artisan migrate
+php artisan db:seed
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+5. Start development server
+```bash
+php artisan serve
+npm run dev
+```
 
-### Premium Partners
+## API Endpoints
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Authentication
+- `POST /api/register` - User registration
+- `POST /api/login` - User login
+- `POST /api/reset-password` - Password reset
+- `POST /api/logout` - User logout
 
-## Contributing
+### User Management
+- `GET /api/user` - Get current user
+- `PATCH /api/user` - Update user profile
+- `PATCH /api/user/password` - Change password
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Trips
+- `POST /api/trip` - Create new trip
+- `GET /api/trips` - Get all active trips
+- `GET /api/my-trips` - Get user's trips
+- `PATCH /api/trips/{trip}` - Update trip
+- `DELETE /api/trips/{trip}` - Delete trip
 
-## Code of Conduct
+### Bookings
+- `POST /api/trips/{trip}/booking` - Request booking
+- `GET /api/bookings` - Get user's bookings
+- `GET /api/trips/{trip}/bookings` - Get trip bookings
+- `PATCH /api/bookings/{booking}` - Update booking status
+- `PATCH /api/bookings/{booking}/cancel` - Cancel booking
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Chat
+- `POST /api/chats/{trip}/send` - Send message
+- `GET /api/chats/{trip}/with/{receiver}` - Get chat messages
+- `GET /api/chats` - Get user's chats
+- `GET /api/chats/unread-count` - Get unread count
 
-## Security Vulnerabilities
+### Wallet
+- `GET /api/wallet` - Get wallet balance
+- `POST /api/wallet/deposit` - Deposit funds
+- `GET /api/wallet/transactions` - Get transaction history
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Ratings
+- `POST /api/ratings/{trip}/to/{toUser}` - Rate user
+- `GET /api/ratings/user/{user}` - Get user ratings
+- `GET /api/ratings/given` - Get given ratings
+
+### Notifications
+- `GET /api/notifications` - Get notifications
+- `PATCH /api/notifications/{id}/read` - Mark as read
+- `PATCH /api/notifications/read-all` - Mark all as read
+
+### Settings
+- `GET /api/settings` - Get settings
+- `GET /api/settings/{key}` - Get specific setting
+- `POST /api/settings` - Create/update setting
+- `DELETE /api/settings/{key}` - Delete setting
+
+## Authentication
+
+All protected endpoints require Bearer token authentication:
+
+```
+Authorization: Bearer {your-token}
+```
+
+## Development
+
+```bash
+# Run tests
+php artisan test
+
+# Run with queue worker
+php artisan queue:work
+
+# Run with log monitoring
+php artisan pail
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

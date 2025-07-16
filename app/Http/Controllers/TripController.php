@@ -58,5 +58,46 @@ class TripController extends Controller
             'trips' => $trips
         ]);
     }
+
+    public function destroy(Trip $trip)
+    {
+        if ($trip->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Недостаточно прав для удаления этой поездки'], 403);
+        }
+
+        $trip->delete();
+
+        return response()->json(['message' => 'Поездка успешно удалена']);
+    }
+
+    public function update(Request $request, Trip $trip)
+    {
+        if ($trip->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Недостаточно прав для обновления этой поездки'], 403);
+        }
+
+        $request->validate([
+            'from_city' => 'sometimes|string|max:255',
+            'to_city' => 'sometimes|string|max:255',
+            'date' => 'sometimes|date',
+            'time' => 'sometimes',
+            'seats' => 'sometimes|integer|min:1',
+            'price' => 'sometimes|numeric|min:0',
+            'note' => 'nullable|string',
+            'carModel' => 'nullable|string',
+            'carColor' => 'nullable|string',
+            'numberCar' => 'nullable|string',
+        ]);
+
+        $trip->update($request->only([
+            'from_city', 'to_city', 'date', 'time', 'seats', 'price', 'note',
+            'carModel', 'carColor', 'numberCar',
+        ]));
+
+        return response()->json([
+            'message' => 'Поездка обновлена!',
+            'trip' => $trip,
+        ]);
+    }
 }
 

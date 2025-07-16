@@ -60,5 +60,42 @@ class BookingController extends Controller
             'status' => $booking->status
         ], 201);
     }
+
+    public function cancel(Request $request, Booking $booking)
+    {
+        if ($booking->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Нет доступа'], 403);
+        }
+
+        if (in_array($booking->status, ['confirmed', 'pending'])) {
+            $booking->status = 'cancelled';
+            $booking->save();
+
+            return response()->json(['message' => 'Заявка отменена']);
+        }
+
+        return response()->json(['message' => 'Нельзя отменить заявку в этом статусе'], 422);
+    }
+
+    public function myBookings()
+    {
+        $bookings = Booking::with('trip')
+            ->where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['bookings' => $bookings]);
+    }
+
+    public function tripBookings(Trip $trip)
+    {
+        if ($trip->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Нет доступа'], 403);
+        }
+
+        $bookings = $trip->bookings()->with('user')->get();
+
+        return response()->json(['bookings' => $bookings]);
+    }
 }
 
