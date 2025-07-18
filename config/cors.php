@@ -6,7 +6,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://192.168.1.234:3000'], // ← IP твоего фронта
+    'allowed_origins' => [
+        'http://192.168.1.234:3000',
+        'https://blablajava.vercel.app',
+        ], // ← IP твоего фронта
 
     'allowed_origins_patterns' => [],
 
