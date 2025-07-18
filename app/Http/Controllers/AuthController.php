@@ -8,6 +8,10 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
+    public function hello ()
+    {
+        echo "Hello World";
+    }
     public function register(Request $request)
     {
         $request->validate([

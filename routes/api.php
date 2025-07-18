@@ -11,6 +11,8 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 
+Route::get('/', [AuthController::class, 'hello'] );
+
 Route::post('/register', [AuthController::class, 'register']); // создать пароль
 Route::post('/login', [AuthController::class, 'login']); //зайти
 Route::post('/reset-password', [AuthController::class, 'resetPassword']); //обновить пароль
