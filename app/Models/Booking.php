@@ -13,6 +13,12 @@ class Booking extends Model
         'trip_id', 'user_id', 'seats', 'status',
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+
+    }
+
     public function trip()
     {
         return $this->belongsTo(Trip::class);
