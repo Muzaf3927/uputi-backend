@@ -29,7 +29,7 @@ class WalletController extends Controller
     {
 
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|integer',
             'description' => 'nullable|string'
         ]);
 

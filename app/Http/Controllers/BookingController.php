@@ -17,26 +17,25 @@ class BookingController extends Controller
             'seats' => 'required|integer|min:1|max:' . $trip->seats,
         ]);
 
-        // Проверим: уже есть заявка от этого юзера?
         $existing = Booking::where('trip_id', $trip->id)
             ->where('user_id', Auth::id())
             ->first();
 
-        if ($existing) {
-            return response()->json(['message' => 'Вы уже отправили заявку'], 403);
+        if (!$existing || $existing->status === 'cancelled' ) {
+            $booking = Booking::updateOrCreate(
+                ['trip_id' => $trip->id, 'user_id' => Auth::id()],
+                ['seats' => $request->seats, 'status' => 'pending']
+            );
+
+            return response()->json(['message' => 'Заявка отправлена', 'booking' => $booking,], 201);
+
+        } elseif ($existing->status === 'confirmed') {
+            return response()->json(['message' => 'Вы уже забронировали место'], 200);
+        } elseif ($existing->status === 'declined') {
+            return response()->json(['message' => 'Водитель не одобрил'], 403);
         }
 
-        $booking = Booking::create([
-            'trip_id' => $trip->id,
-            'user_id' => Auth::id(),
-            'seats' => $request->seats,
-            'status' => 'pending',
-        ]);
-
-        return response()->json([
-            'message' => 'Заявка отправлена',
-            'booking' => $booking,
-        ], 201);
+        return response()->json(['message' => 'Ваша заявка в ожидание'], 403);
     }
 
     public function update(Request $request, Booking $booking)
@@ -44,13 +43,13 @@ class BookingController extends Controller
         $user = Auth::user();
         $trip = $booking->trip;
 
-
         if ($user->id !== $trip->user_id) {
             return response()->json(['message' => 'Нет доступа'], 403);
         }
 
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,declined,cancelled',
+                            //в ожидании, подтверждено, отклонено, отменено
         ]);
 
         $booking->update(['status' => $validated['status']]);
@@ -67,7 +66,7 @@ class BookingController extends Controller
             return response()->json(['message' => 'Нет доступа'], 403);
         }
 
-        if (in_array($booking->status, ['confirmed', 'pending'])) {
+        if (in_array($booking->status, ['confirmed', 'pending', 'declined', 'cancelled'])) {
             $booking->status = 'cancelled';
             $booking->save();
 
