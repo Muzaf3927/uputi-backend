@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('date');
             $table->time('time');
             $table->unsignedTinyInteger('seats'); // доступные места
-            $table->decimal('price', 8, 2); // цена за место
+            $table->unsignedBigInteger('price'); // цена за место
             $table->text('note')->nullable(); // комментарий
             $table->string('carModel')->nullable();
             $table->string('carColor')->nullable();
