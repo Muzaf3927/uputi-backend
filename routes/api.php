@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trips', [TripController::class, 'index']); //все поездки
     Route::patch('/trips/{trip}', [TripController::class, 'update']);   // обновить поездку
     Route::delete('/trips/{trip}', [TripController::class, 'destroy']); // удалить поездку
+    Route::post('/trips/{trip}/complete', [TripController::class, 'complete']); // завершить поездку
     //Bookings - Броны
     Route::post('/trips/{trip}/booking', [BookingController::class, 'store']); //бронировать
     Route::patch('/bookings/{booking}', [BookingController::class, 'update']); //бронировать
@@ -40,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/chats/unread-count', [ChatController::class, 'unreadCount']); //непрочитанные сообщение
     //Notifications - Уведомление
     Route::get('/notifications', [NotificationController::class, 'index']); // все уведомления
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // количество непрочитанных
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // отметить как прочитанное
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']); // прочитать все
     //Wallets - Кошелек

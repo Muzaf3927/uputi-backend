@@ -40,4 +40,13 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Все уведомления прочитаны']);
     }
+
+    public function unreadCount()
+    {
+        $count = Notification::where('user_id', Auth::id())
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json(['unread_count' => $count]);
+    }
 }

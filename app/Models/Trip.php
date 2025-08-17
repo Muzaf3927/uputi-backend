@@ -23,4 +23,19 @@ class Trip extends Model
     {
         return $this->hasMany(Booking::class);
     }
+
+    public function confirmedBookings()
+    {
+        return $this->hasMany(Booking::class)->where('status', 'confirmed');
+    }
+
+    public function getBookedSeatsAttribute()
+    {
+        return $this->confirmedBookings()->sum('seats');
+    }
+
+    public function getAvailableSeatsAttribute()
+    {
+        return $this->seats - $this->booked_seats;
+    }
 }

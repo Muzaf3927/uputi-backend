@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Trip;
+use App\Models\Booking;
+use App\Models\Wallet;
+use App\Models\Transaction;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -53,7 +57,16 @@ class TripController extends Controller
 
     public function index()
     {
-        $trips = Trip::with('driver')->where('status', 'active')->orderBy('date')->get();
+        $trips = Trip::with('driver')
+            ->where('status', 'active')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($trip) {
+                $trip->available_seats = $trip->available_seats;
+                $trip->booked_seats = $trip->booked_seats;
+                return $trip;
+            });
+
         return response()->json([
             'trips' => $trips
         ]);
@@ -97,6 +110,102 @@ class TripController extends Controller
         return response()->json([
             'message' => 'Поездка обновлена!',
             'trip' => $trip,
+        ]);
+    }
+
+    public function complete(Trip $trip)
+    {
+        if ($trip->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Недостаточно прав для завершения этой поездки'], 403);
+        }
+
+        if ($trip->status !== 'active') {
+            return response()->json(['message' => 'Поездка уже завершена или отменена'], 422);
+        }
+
+        // Получаем все подтвержденные бронирования для этой поездки
+        $confirmedBookings = $trip->bookings()->where('status', 'confirmed')->get();
+
+        if ($confirmedBookings->isEmpty()) {
+            return response()->json(['message' => 'Нет подтвержденных пассажиров для завершения поездки'], 422);
+        }
+
+        // Списываем комиссию с водителя (1000 сум)
+        $driverWallet = $trip->driver->wallet;
+        if (!$driverWallet) {
+            $driverWallet = Wallet::create(['user_id' => $trip->user_id]);
+        }
+
+        if ($driverWallet->balance < 1000) {
+            return response()->json(['message' => 'Недостаточно средств на балансе водителя для завершения поездки'], 422);
+        }
+
+        $driverWallet->balance -= 1000;
+        $driverWallet->save();
+
+        Transaction::create([
+            'wallet_id' => $driverWallet->id,
+            'type' => 'trip_completion_fee',
+            'amount' => 1000,
+            'description' => "Комиссия за завершение поездки {$trip->from_city} → {$trip->to_city}"
+        ]);
+
+        // Списываем комиссию с каждого пассажира (50 сум)
+        foreach ($confirmedBookings as $booking) {
+            $passengerWallet = $booking->user->wallet;
+            if (!$passengerWallet) {
+                $passengerWallet = Wallet::create(['user_id' => $booking->user_id]);
+            }
+
+            if ($passengerWallet->balance >= 50) {
+                $passengerWallet->balance -= 50;
+                $passengerWallet->save();
+
+                Transaction::create([
+                    'wallet_id' => $passengerWallet->id,
+                    'type' => 'trip_completion_fee',
+                    'amount' => 50,
+                    'description' => "Комиссия за завершение поездки {$trip->from_city} → {$trip->to_city}"
+                ]);
+
+                // Создаем уведомление для пассажира
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'sender_id' => $trip->user_id,
+                    'type' => 'trip_completed',
+                    'message' => "Поездка {$trip->from_city} → {$trip->to_city} завершена. Списана комиссия 50 сум.",
+                    'data' => json_encode([
+                        'trip_id' => $trip->id,
+                        'fee_amount' => 50
+                    ]),
+                ]);
+            }
+        }
+
+        // Завершаем поездку
+        $trip->status = 'completed';
+        $trip->save();
+
+        // Создаем уведомление для водителя
+        Notification::create([
+            'user_id' => $trip->user_id,
+            'sender_id' => $trip->user_id,
+            'type' => 'trip_completed',
+            'message' => "Поездка {$trip->from_city} → {$trip->to_city} завершена. Списана комиссия 1000 сум.",
+            'data' => json_encode([
+                'trip_id' => $trip->id,
+                'fee_amount' => 1000,
+                'passengers_count' => $confirmedBookings->count()
+            ]),
+        ]);
+
+        return response()->json([
+            'message' => 'Поездка успешно завершена',
+            'trip' => $trip,
+            'driver_fee' => 1000,
+            'passenger_fee' => 50,
+            'passengers_count' => $confirmedBookings->count(),
+            'total_passenger_fees' => $confirmedBookings->count() * 50
         ]);
     }
 }

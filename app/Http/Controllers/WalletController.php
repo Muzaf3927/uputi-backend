@@ -20,7 +20,11 @@ class WalletController extends Controller
         }
 
         return response()->json([
-            'balance' => $wallet->balance
+            'wallet_id' => $wallet->id,
+            'balance' => $wallet->balance,
+            'user_id' => $wallet->user_id,
+            'created_at' => $wallet->created_at,
+            'updated_at' => $wallet->updated_at
         ]);
     }
 
@@ -55,6 +59,8 @@ class WalletController extends Controller
             'balance' => $wallet->balance
         ]);
     }
+
+
 
     // История транзакций
     public function getTransactions()
