@@ -16,7 +16,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|min:9|max:9|unique:users,phone',
+            'phone' => 'required|string|size:9|unique:users,phone',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
@@ -35,7 +35,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'phone' => 'required|min:9|max:9',
+            'phone' => 'required|size:9',
             'password' => 'required',
         ]);
 
@@ -60,20 +60,20 @@ class AuthController extends Controller
     public function resetPassword(Request $request) //восстановить пароль
     {
         $request->validate([
-            'phone' => 'required|min:9|max:9|exists:users,phone',
+            'phone' => 'required|size:9|exists:users,phone',
             'password' => 'required|min:6|confirmed',
         ]);
 
         $user = User::where('phone', $request->phone)->first();
 
-        if (!$user) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
 
         $user->password = Hash::make($request->password);
         $user->save();
 
-        return response()->json(['message' => 'Password reset successful', 'success'], 201);
+        return response()->json([
+            'message' => 'Password reset successful',
+            'success' => true
+        ], 201);
     }
 
     public function changePassword(Request $request)  //смена пароль в профиле
