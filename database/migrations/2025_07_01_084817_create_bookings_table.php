@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('trip_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // пассажир
             $table->unsignedTinyInteger('seats')->default(1); // сколько мест забронировано
+            $table->unsignedInteger('offered_price')->nullable(); // цена, предложенная пассажиром
+            $table->text('comment')->nullable(); // комментарий к заявке
             $table->enum('status', ['pending', 'confirmed', 'declined', 'cancelled'])->default('pending');
             $table->timestamps();
         });

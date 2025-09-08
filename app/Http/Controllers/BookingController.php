@@ -17,6 +17,8 @@ class BookingController extends Controller
     {
         $request->validate([
             'seats' => 'required|integer|min:1',
+            'offered_price' => 'nullable|integer|min:0',
+            'comment' => 'nullable|string|max:500',
         ]);
 
         // Проверяем, что запрашиваемое количество мест не превышает доступное
@@ -32,26 +34,41 @@ class BookingController extends Controller
             ->where('user_id', Auth::id())
             ->first();
 
-        if (!$existing || $existing->status === 'cancelled' ) {
+        if (!$existing || $existing->status === 'cancelled') {
             $booking = Booking::updateOrCreate(
                 ['trip_id' => $trip->id, 'user_id' => Auth::id()],
-                ['seats' => $request->seats, 'status' => 'pending']
+                [
+                    'seats' => $request->seats,
+                    'status' => 'pending',
+                    'offered_price' => $request->offered_price,
+                    'comment' => $request->comment,
+                ]
             );
 
-            // Создаем уведомление для водителя о новой заявке
+            $message = Auth::user()->name . " отправил заявку на поездку {$trip->from_city} → {$trip->to_city}";
+
+            if ($request->offered_price) {
+                $message = Auth::user()->name . " предлагает цену {$request->offered_price} сум на поездку {$trip->from_city} → {$trip->to_city}";
+            }
+
             Notification::create([
                 'user_id' => $trip->user_id,
                 'sender_id' => Auth::id(),
                 'type' => 'new_booking',
-                'message' => "Новая заявка на поездку {$trip->from_city} → {$trip->to_city} от " . Auth::user()->name,
+                'message' => $message,
                 'data' => json_encode([
-                    'trip_id' => $trip->id,
-                    'booking_id' => $booking->id,
-                    'passenger_id' => Auth::id()
+                    'trip_id'       => $trip->id,
+                    'booking_id'    => $booking->id,
+                    'passenger_id'  => Auth::id(),
+                    'offered_price' => $booking->offered_price,
+                    'comment'       => $booking->comment,
                 ]),
             ]);
 
-            return response()->json(['message' => 'Заявка отправлена', 'booking' => $booking,], 201);
+            return response()->json([
+                'message' => 'Заявка отправлена',
+                'booking' => $booking,
+            ], 201);
 
         } elseif ($existing->status === 'confirmed') {
             return response()->json(['message' => 'Вы уже забронировали место'], 200);
@@ -59,7 +76,7 @@ class BookingController extends Controller
             return response()->json(['message' => 'Водитель не одобрил'], 403);
         }
 
-        return response()->json(['message' => 'Ваша заявка в ожидание'], 403);
+        return response()->json(['message' => 'Ваша заявка в ожидании'], 403);
     }
 
     public function update(Request $request, Booking $booking)
@@ -73,7 +90,6 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,declined,cancelled',
-                            //в ожидании, подтверждено, отклонено, отменено
         ]);
 
         $oldStatus = $booking->status;
@@ -95,7 +111,9 @@ class BookingController extends Controller
                         'trip_id' => $trip->id,
                         'sender_id' => $trip->user_id, // водитель
                         'receiver_id' => $booking->user_id, // пассажир
-                        'message' => "Привет! Я подтвердил вашу заявку на поездку {$trip->from_city} → {$trip->to_city}. Давайте обсудим детали поездки!",
+                        'message' => "Привет! Я подтвердил вашу заявку на поездку {$trip->from_city} → {$trip->to_city}. " .
+                            "Вы предлагали: {$booking->offered_price} сум. " .
+                            ($booking->comment ? "Комментарий: {$booking->comment}" : ""),
                     ]);
 
                     // Создаем уведомление для пассажира
@@ -140,7 +158,12 @@ class BookingController extends Controller
         return response()->json([
             'message' => 'Статус обновлен',
             'status' => $booking->status,
-            'trip_seats_remaining' => $trip->seats
+            'trip_seats_remaining' => $trip->seats,
+            'passenger_offer' => [
+                'offered_price' => $booking->offered_price,
+                'comment' => $booking->comment
+            ],
+            'trip_price' => $trip->price // цена, которую изначально указал водитель
         ], 201);
     }
 
