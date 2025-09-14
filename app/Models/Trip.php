@@ -11,7 +11,7 @@ class Trip extends Model
 
     protected $fillable = [
         'user_id', 'from_city', 'to_city', 'date', 'time',
-        'seats', 'price', 'note', 'carModel', 'carColor', 'status',
+        'seats', 'price', 'note', 'carModel', 'carColor', 'status', 'numberCar'
     ];
 
     public function driver()

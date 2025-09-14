@@ -21,9 +21,9 @@ return new class extends Migration
             $table->unsignedTinyInteger('seats'); // доступные места
             $table->unsignedBigInteger('price'); // цена за место
             $table->text('note')->nullable(); // комментарий
-            $table->string('carModel')->nullable();
-            $table->string('carColor')->nullable();
-            $table->string('numberCar')->nullable();
+            $table->string('carModel');
+            $table->string('carColor');
+            $table->string('numberCar');
             $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
             $table->timestamps();
         });

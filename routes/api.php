@@ -44,19 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // количество непрочитанных
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // отметить как прочитанное
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']); // прочитать все
-    //Wallets - Кошелек
-    Route::get('/wallet', [WalletController::class, 'getWallet']); //баланс
-    Route::post('/wallet/deposit', [WalletController::class, 'deposit']);  //пополнить
-    Route::get('/wallet/transactions', [WalletController::class, 'getTransactions']); //история транзакции
+
     //Ratings - Оценка
     Route::post('/ratings/{trip}/to/{toUser}', [RatingController::class, 'rateUser']);  //поставить оценку
     Route::get('/ratings/user/{user}', [RatingController::class, 'getUserRatings']);  //отзывы пользователя
     Route::get('/ratings/given', [RatingController::class, 'getMyRatingsGiven']); //мои отзывы
-    //Settings - Настройка
-    Route::get('/settings', [SettingController::class, 'index']); //получить настройки
-    Route::get('/settings/{key}', [SettingController::class, 'show']);  //получить одну настройку
-    Route::post('/settings', [SettingController::class, 'store']); //создать или обновить
-    Route::delete('/settings/{key}', [SettingController::class, 'destroy']); //удалить
+
     //Выйти
     Route::post('/logout', [AuthController::class, 'logout']); //выход
 
