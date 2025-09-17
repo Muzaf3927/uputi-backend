@@ -21,6 +21,9 @@ class User extends Authenticatable
         'balance',
         'rating',
         'rating_count',
+        'is_verified',
+        'verification_code',
+        'telegram_chat_id'
     ];
 
     protected $hidden = [

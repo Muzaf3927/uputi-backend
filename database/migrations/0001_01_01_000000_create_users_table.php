@@ -21,6 +21,9 @@ return new class extends Migration
             $table->integer('balance')->default(0);
             $table->decimal('rating', 2, 1)->default(0);
             $table->unsignedInteger('rating_count')->default(0);
+            $table->boolean('is_verified')->default(false);
+            $table->string('verification_code')->nullable();
+            $table->string('telegram_chat_id')->nullable();
             $table->timestamps();
         });
     }

@@ -7,11 +7,13 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\RatingController;
-use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 
 Route::get('/', [AuthController::class, 'hello'] );
+Route::post('/register1', [AuthController::class, 'register1']);
+Route::post('/telegram/webhook', [AuthController::class, 'telegramWebhook']); // бот слушает ту
+Route::post('/verify', [AuthController::class, 'verifyCode']);
 
 Route::post('/register', [AuthController::class, 'register']); // создать пароль
 Route::post('/login', [AuthController::class, 'login']); //зайти
