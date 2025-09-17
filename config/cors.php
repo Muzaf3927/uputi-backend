@@ -9,7 +9,8 @@ return [
     'allowed_origins' => [
         'http://192.168.1.234:3000',
         'http://localhost:5173',
-        ], // ← IP твоего фронта
+        'https://ride-share-pro.netlify.app', // ← Netlify фронт
+    ],
 
     'allowed_origins_patterns' => [],
 
@@ -19,5 +20,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true, // ← ОБЯЗАТЕЛЬНО для Sanctum
+    'supports_credentials' => true,
 ];
