@@ -11,6 +11,15 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 
 
+Route::get('/test-eskiz', function () {
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(10)->get('https://notify.eskiz.uz/api/auth/login');
+        return $response->body();
+    } catch (\Exception $e) {
+        return $e->getMessage();
+    }
+});
+
 Route::post('/register', [VerifyController::class, 'registerStepOne']);
 Route::post('/verify', [VerifyController::class, 'verifySmsAndActivate']);
 
