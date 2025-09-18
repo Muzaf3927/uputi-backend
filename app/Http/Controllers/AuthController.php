@@ -6,139 +6,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
 {
-
-    // 📌 Регистрация
-    public function register1(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|size:12|unique:users,phone',
-            'password' => 'required|string|min:6|confirmed',
-        ], [
-            'phone.unique' => 'Вы раньше зарегистрировались с этим номером',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'is_verified' => false, // ✨ не подтвержден
-        ]);
-
-        // ссылка на бота
-        $botLink = "https://t.me/BirgaYul_bot?start=" . $user->phone;
-
-        return response()->json([
-            'message' => 'Регистрация прошла успешно. Подтвердите телефон в Telegram.',
-            'telegram_link' => $botLink,
-            'user' => $user,
-        ], 201);
-    }
-
-    // 📌 Подтверждение кода
-    public function verifyCode(Request $request)
-    {
-        $request->validate([
-            'phone' => 'required|string|size:12',
-            'code' => 'required|string|size:4',
-        ]);
-
-        $user = User::where('phone', $request->phone)->first();
-
-        if (!$user) {
-            return response()->json(['error' => 'Пользователь не найден'], 404);
-        }
-
-        if ($user->verification_code === $request->code) {
-            $user->is_verified = true;
-            $user->verification_code = null;
-            $user->save();
-
-            // выдаем токен
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'message' => 'Телефон подтвержден ✅',
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'user' => $user,
-            ]);
-        }
-
-        return response()->json(['error' => 'Неверный код'], 400);
-    }
-
-    // 📌 Telegram webhook
-    public function telegramWebhook(Request $request)
-    {
-        $update = $request->all();
-        \Log::info('Telegram webhook', $update); // логируем всё, что пришло
-
-        $botToken = env('TELEGRAM_BOT_TOKEN');
-
-        if (isset($update['message']['text'])) {
-            $text = $update['message']['text'];
-            $chatId = $update['message']['chat']['id'];
-
-            if (str_starts_with($text, "/start")) {
-                $phone = trim(str_replace("/start", "", $text));
-                $phone = ltrim($phone);
-
-                $user = User::where('phone', $phone)->first();
-                if ($user) {
-                    $code = rand(1000, 9999);
-                    $user->verification_code = $code;
-                    $user->telegram_chat_id = $chatId;
-                    $user->save();
-
-                    Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                        'chat_id' => $chatId,
-                        'text' => "Ваш код подтверждения: {$code}",
-                    ]);
-                } else {
-                    Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                        'chat_id' => $chatId,
-                        'text' => "Номер не найден. Сначала зарегистрируйтесь на сайте.",
-                    ]);
-                }
-            }
-        }
-
-        return response()->json(['ok' => true]);
-    }
-
-
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|size:9|unique:users,phone',
-            'password' => 'required|string|min:6|confirmed',
-        ], [
-            'phone.unique' => 'Вы раньше зарегистрировались с этим номером',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-        ]);
-
-        // Автоматическая выдача токена после успешной регистрации
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Регистрация прошла успешно',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user
-        ], 201);
-    }
-
-
     public function login(Request $request)
     {
         $request->validate([
@@ -169,24 +40,96 @@ class AuthController extends Controller
         ]);
     }
 
-    public function resetPassword(Request $request)
+    // 1-й шаг: отправляем SMS для сброса пароля
+    public function resetPasswordStepOne(Request $request)
     {
         $request->validate([
-            'phone'    => 'required|size:9|exists:users,phone',
+            'phone' => 'required|size:9|exists:users,phone',
+        ], [
+            'phone.required' => 'Номер телефона обязателен',
+            'phone.size'     => 'Номер телефона должен состоять из 9 цифр',
+            'phone.exists'   => 'Пользователь с таким номером не найден',
+        ]);
+
+        $user = User::where('phone', $request->phone)->first();
+
+        // Генерируем verification_id
+        $verificationId = Str::uuid();
+        $ttl = now()->addMinutes(10);
+
+        Cache::put('reset_user_' . $verificationId, $user->id, $ttl);
+        Cache::put('reset_user_' . $verificationId . '_attempts', 0, $ttl);
+
+        // Отправляем SMS (пока тестовый текст)
+        $response = Http::withToken(env('ESKIZ_TOKEN'))
+            ->asForm()
+            ->post('https://notify.eskiz.uz/api/message/sms/send', [
+                'mobile_phone' => '998' . $request->phone,
+                'message' => "Parolni tiklash uchun kod: 123456", // пока тест, потом можно рандомный
+                'from' => '4546',
+            ]);
+
+        if ($response->failed()) {
+            Cache::forget('reset_user_' . $verificationId);
+            Cache::forget('reset_user_' . $verificationId . '_attempts');
+            return response()->json(['message' => 'Не удалось отправить SMS, попробуйте снова'], 500);
+        }
+
+        return response()->json([
+            'message' => 'На ваш номер отправлено SMS для подтверждения',
+            'verification_id' => $verificationId,
+        ]);
+    }
+
+
+// 2-й шаг: проверяем код и меняем пароль
+    public function resetPasswordStepTwo(Request $request)
+    {
+        $request->validate([
+            'verification_id' => 'required|uuid',
+            'message' => 'required|string',
             'password' => 'required|min:6|confirmed',
         ], [
-            'phone.required'     => 'Номер телефона обязателен',
-            'phone.size'         => 'Номер телефона должен состоять из 9 цифр',
-            'phone.exists'       => 'Пользователь с таким номером не найден',
             'password.required'  => 'Пароль обязателен',
             'password.min'       => 'Пароль должен содержать минимум 6 символов',
             'password.confirmed' => 'Пароли не совпадают',
         ]);
 
-        $user = User::where('phone', $request->phone)->first();
+        $key = 'reset_user_' . $request->verification_id;
+        $attemptsKey = $key . '_attempts';
 
+        $userId = Cache::get($key);
+
+        if (!$userId) {
+            return response()->json(['message' => 'Срок подтверждения истёк или запрос не найден'], 422);
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            Cache::forget($key);
+            Cache::forget($attemptsKey);
+            return response()->json(['message' => 'Пользователь не найден'], 422);
+        }
+
+        // Проверка тестового текста
+        if ($request->message !== 'Parolni tiklash uchun kod: 123456') {
+            $attempts = Cache::increment($attemptsKey);
+
+            if ($attempts >= 3) {
+                Cache::forget($key);
+                Cache::forget($attemptsKey);
+                return response()->json(['message' => 'Превышено количество попыток. Попробуйте снова'], 422);
+            }
+
+            return response()->json(['message' => 'Неверный код подтверждения. Попробуйте снова'], 422);
+        }
+
+        // Всё ок → обновляем пароль
         $user->password = Hash::make($request->password);
         $user->save();
+
+        Cache::forget($key);
+        Cache::forget($attemptsKey);
 
         return response()->json([
             'message' => 'Пароль успешно обновлён',

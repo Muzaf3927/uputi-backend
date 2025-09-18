@@ -5,19 +5,23 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\WalletController;
+use App\Http\Controllers\VerifyController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 
-Route::get('/', [AuthController::class, 'hello'] );
-Route::post('/register1', [AuthController::class, 'register1']);
-Route::post('/telegram/webhook', [AuthController::class, 'telegramWebhook']); // бот слушает ту
-Route::post('/verify', [AuthController::class, 'verifyCode']);
 
-Route::post('/register', [AuthController::class, 'register']); // создать пароль
+Route::post('/register', [VerifyController::class, 'registerStepOne']);
+Route::post('/verify', [VerifyController::class, 'verifySmsAndActivate']);
+
+// Шаг 1: отправка SMS
+Route::post('/reset-password/step-one', [AuthController::class, 'resetPasswordStepOne']);
+
+// Шаг 2: подтверждение кода и смена пароля
+Route::post('/reset-password/step-two', [AuthController::class, 'resetPasswordStepTwo']);
+
 Route::post('/login', [AuthController::class, 'login']); //зайти
-Route::post('/reset-password', [AuthController::class, 'resetPassword']); //обновить пароль
+
 // Защищённые маршруты
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [UserController::class, 'me']); //Получения данных пользователя
