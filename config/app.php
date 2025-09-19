@@ -117,6 +117,7 @@ return [
     | Supported drivers: "file", "cache"
     |
     */
+    'json_encode_options' => JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
 
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
