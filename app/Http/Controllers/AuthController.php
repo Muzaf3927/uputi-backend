@@ -66,7 +66,7 @@ class AuthController extends Controller
             ->asForm()
             ->post('https://notify.eskiz.uz/api/message/sms/send', [
                 'mobile_phone' => '998' . $request->phone,
-                'message' => "Parolni tiklash uchun kod: 123456", // пока тест, потом можно рандомный
+                'message' => "Bu Eskiz dan test", // пока тест, потом можно рандомный
                 'from' => '4546',
             ]);
 
@@ -113,7 +113,7 @@ class AuthController extends Controller
         }
 
         // Проверка тестового текста
-        if ($request->message !== 'Parolni tiklash uchun kod: 123456') {
+        if ($request->message !== 'Bu Eskiz dan test') {
             $attempts = Cache::increment($attemptsKey);
 
             if ($attempts >= 3) {
