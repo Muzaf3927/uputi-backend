@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
 
         // Первый пользователь
         $user1 = User::create([
-            'name' => 'Алексей Иванов',
+            'name' => 'Najim',
             'phone' => '+79001234567',
             'role' => 'driver',
             'password' => Hash::make('password123'),
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
 
         // Второй пользователь
         $user2 = User::create([
-            'name' => 'Мария Петрова',
+            'name' => 'Ali',
             'phone' => '+79007654321',
             'role' => 'driver',
             'password' => Hash::make('password123'),
@@ -45,7 +45,7 @@ class DatabaseSeeder extends Seeder
         // Создаём специального пользователя для тестирования
         $specialUser = User::create([
             'name' => 'Muzaffar Admin',
-            'phone' => '900038902',
+            'phone' => '900038901',
             'role' => 'driver',
             'password' => Hash::make('39273927'),
             'balance' => 10000,
@@ -76,17 +76,17 @@ class DatabaseSeeder extends Seeder
 
         // Создаём по 3 поездки для каждого пользователя
         $cities = [
-            ['from' => 'Москва', 'to' => 'Санкт-Петербург'],
-            ['from' => 'Москва', 'to' => 'Казань'],
-            ['from' => 'Санкт-Петербург', 'to' => 'Москва'],
-            ['from' => 'Казань', 'to' => 'Москва'],
-            ['from' => 'Москва', 'to' => 'Нижний Новгород'],
+            ['from' => 'Navoiy', 'to' => 'Buxoro'],
+            ['from' => 'Toshkent', 'to' => 'samarqand'],
+            ['from' => 'Buxoro', 'to' => 'Navoiy'],
+            ['from' => 'Jizzax', 'to' => 'Rossiya'],
+            ['from' => 'Namangan', 'to' => 'Samarqand'],
             ['from' => 'Санкт-Петербург', 'to' => 'Казань']
         ];
 
         $carModels = ['Toyota Camry', 'Honda Accord', 'BMW 3 Series', 'Mercedes C-Class', 'Audi A4', 'Volkswagen Passat'];
-        $carColors = ['Белый', 'Чёрный', 'Серый', 'Синий', 'Красный', 'Серебристый'];
-        $carNumbers = ['А123БВ777', 'В456ГД123', 'С789ЕЖ456', 'Д012ЗИ789', 'Е345КЛ012', 'Ф678МН345'];
+        $carColors = ['Oq', 'Qora', 'Sariq', 'Qizil', 'Yashil', 'Kuk'];
+        $carNumbers = ['01F001AA', '01F001AA', '01F001AA', '01F001AA', '01F001AA', '01F001AA'];
 
         foreach ($users as $userIndex => $user) {
             for ($i = 0; $i < 3; $i++) {
@@ -101,7 +101,7 @@ class DatabaseSeeder extends Seeder
                     'time' => sprintf('%02d:%02d', rand(6, 22), rand(0, 59)),
                     'seats' => rand(2, 4),
                     'price' => rand(800, 2500),
-                    'note' => 'Комфортная поездка, кондиционер, Wi-Fi',
+                    'note' => 'Yuk op ketamiz',
                     'carModel' => $carModels[$carIndex],
                     'carColor' => $carColors[$carIndex],
                     'numberCar' => $carNumbers[$carIndex],
@@ -112,9 +112,9 @@ class DatabaseSeeder extends Seeder
 
         // Создаём дополнительные поездки для специального пользователя
         $specialTrips = [
-            ['from' => 'Москва', 'to' => 'Сочи'],
-            ['from' => 'Санкт-Петербург', 'to' => 'Москва'],
-            ['from' => 'Москва', 'to' => 'Екатеринбург']
+            ['from' => 'Buxoro', 'to' => 'Jizzax'],
+            ['from' => 'Samarqand', 'to' => 'Navoiy'],
+            ['from' => 'Toshkent', 'to' => 'Navoiy']
         ];
 
         foreach ($specialTrips as $index => $trip) {
@@ -126,10 +126,10 @@ class DatabaseSeeder extends Seeder
                 'time' => sprintf('%02d:%02d', rand(8, 20), rand(0, 59)),
                 'seats' => rand(3, 5),
                 'price' => rand(1200, 3000),
-                'note' => 'Премиум поездка, кондиционер, Wi-Fi, закуски',
+                'note' => 'Konditsioner bor',
                 'carModel' => 'Mercedes S-Class',
-                'carColor' => 'Чёрный',
-                'numberCar' => 'А999АА777',
+                'carColor' => 'Qora',
+                'numberCar' => '01F001AA',
                 'status' => 'active'
             ]);
         }

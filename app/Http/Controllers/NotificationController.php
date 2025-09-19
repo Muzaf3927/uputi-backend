@@ -24,13 +24,13 @@ class NotificationController extends Controller
             ->first();
 
         if (!$notification) {
-            return response()->json(['message' => 'Уведомление не найдено'], 404);
+            return response()->json(['message' => 'Notification not found'], 404);
         }
 
         $notification->is_read = true;
         $notification->save();
 
-        return response()->json(['message' => 'Уведомление прочитано']);
+        return response()->json(['message' => 'Notification read']);
     }
 
     public function markAllAsRead()
@@ -38,7 +38,7 @@ class NotificationController extends Controller
         Notification::where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
-        return response()->json(['message' => 'Все уведомления прочитаны']);
+        return response()->json(['message' => 'All notifications read']);
     }
 
     public function unreadCount()

@@ -29,7 +29,7 @@ class TripController extends Controller
                 'regex:/^[0-9]{2}[A-Z]{1}[0-9]{3}[A-Z]{2}$/'
             ],
         ], [
-            'numberCar.regex' => 'Номер машины должен быть в формате 01A000AA (только цифры и заглавные латинские буквы).'
+            'numberCar.regex' => 'Car number must be in format 01A000AA (only digits and uppercase Latin letters).'
         ]);
 
         $trip = Trip::create([
@@ -47,7 +47,7 @@ class TripController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Поездка создана!',
+            'message' => 'Trip created!',
             'trip' => $trip,
         ]);
     }
@@ -81,18 +81,18 @@ class TripController extends Controller
     public function destroy(Trip $trip)
     {
         if ($trip->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Недостаточно прав для удаления этой поездки'], 403);
+            return response()->json(['message' => 'Insufficient permissions to delete this trip'], 403);
         }
 
         $trip->delete();
 
-        return response()->json(['message' => 'Поездка успешно удалена']);
+        return response()->json(['message' => 'Trip deleted successfully']);
     }
 
     public function update(Request $request, Trip $trip)
     {
         if ($trip->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Недостаточно прав для обновления этой поездки'], 403);
+            return response()->json(['message' => 'Insufficient permissions to update this trip'], 403);
         }
 
         $request->validate([
@@ -110,7 +110,7 @@ class TripController extends Controller
                 'regex:/^[0-9]{2}[A-Z]{1}[0-9]{3}[A-Z]{2}$/'
             ],
         ], [
-            'numberCar.regex' => 'Номер машины должен быть в формате 01A000AA (только цифры и заглавные латинские буквы).'
+            'numberCar.regex' => 'Car number must be in format 01A000AA (only digits and uppercase Latin letters).'
         ]);
 
         $trip->update($request->only([
@@ -119,7 +119,7 @@ class TripController extends Controller
         ]));
 
         return response()->json([
-            'message' => 'Поездка обновлена!',
+            'message' => 'Trip updated!',
             'trip' => $trip,
         ]);
     }
@@ -127,7 +127,7 @@ class TripController extends Controller
     public function complete(Trip $trip)
     {
         if ($trip->status !== 'active') {
-            return response()->json(['message' => 'Эта поездка уже завершена или отменена.'], 400);
+            return response()->json(['message' => 'This trip is already completed or cancelled.'], 400);
         }
 
         $trip->status = 'completed';
@@ -140,7 +140,7 @@ class TripController extends Controller
                     'user_id'   => $booking->user_id,      // кому уведомление
                     'sender_id' => $trip->user_id,        // кто отправил (водитель)
                     'type'      => 'trip_completed',
-                    'message'   => "Поездка {$trip->from_city} → {$trip->to_city} завершена.",
+                    'message'   => "Trip {$trip->from_city} → {$trip->to_city} completed.",
                     'data'      => json_encode([
                         'trip_id' => $trip->id,
                     ]),
@@ -149,7 +149,7 @@ class TripController extends Controller
         }
 
         return response()->json([
-            'message' => 'Поездка завершена!',
+            'message' => 'Trip completed!',
             'trip' => $trip
         ]);
     }

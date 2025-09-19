@@ -19,7 +19,7 @@ class VerifyController extends Controller
             'phone' => 'required|string|size:9|unique:users,phone',
             'password' => 'required|string|min:6|confirmed',
         ], [
-            'phone.unique' => 'Вы раньше зарегистрировались с этим номером',
+            'phone.unique' => 'You have already registered with this number',
         ]);
 
         // Создаём временного пользователя
@@ -54,11 +54,11 @@ class VerifyController extends Controller
             $user->delete();
             Cache::forget('pending_user_' . $verificationId);
             Cache::forget('pending_user_' . $verificationId . '_attempts');
-            return response()->json(['message' => 'Не удалось отправить SMS, попробуйте снова'], 500);
+            return response()->json(['message' => 'Failed to send SMS, please try again'], 500);
         }
 
         return response()->json([
-            'message' => 'Профиль создан. На ваш номер отправлено SMS.',
+            'message' => 'Profile created. SMS sent to your number.',
             'verification_id' => $verificationId
         ]);
     }
@@ -77,7 +77,7 @@ class VerifyController extends Controller
         $userId = Cache::get($key);
 
         if (!$userId) {
-            return response()->json(['message' => 'Срок подтверждения истёк или профиль не найден'], 422);
+            return response()->json(['message' => 'Confirmation period expired or profile not found'], 422);
         }
 
         $user = User::find($userId);
@@ -85,7 +85,7 @@ class VerifyController extends Controller
         if (!$user) {
             Cache::forget($key);
             Cache::forget($attemptsKey);
-            return response()->json(['message' => 'Профиль не найден'], 422);
+            return response()->json(['message' => 'Profile not found'], 422);
         }
 
         if ($request->message !== 'Bu Eskiz dan test') {
@@ -95,10 +95,10 @@ class VerifyController extends Controller
                 $user->delete();
                 Cache::forget($key);
                 Cache::forget($attemptsKey);
-                return response()->json(['message' => 'Превышено количество попыток. Попробуйте снова зарегистрироваться.'], 422);
+                return response()->json(['message' => 'Maximum attempts exceeded. Please try registering again.'], 422);
             }
 
-            return response()->json(['message' => 'Неверный текст подтверждения. Попробуйте снова'], 422);
+            return response()->json(['message' => 'Invalid confirmation text. Please try again'], 422);
         }
 
         // Успешная активация
@@ -108,7 +108,7 @@ class VerifyController extends Controller
         Cache::forget($attemptsKey);
 
         return response()->json([
-            'message' => 'Регистрация прошла успешно',
+            'message' => 'Registration successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user

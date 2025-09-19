@@ -50,12 +50,12 @@ class WalletController extends Controller
             'wallet_id' => $wallet->id,
             'type' => 'deposit',
             'amount' => $request->amount,
-            'description' => $request->description ?? 'Пополнение баланса'
+            'description' => $request->description ?? 'Balance top-up'
         ]);
 
 
         return response()->json([
-            'message' => 'Баланс успешно пополнен',
+            'message' => 'Balance topped up successfully',
             'balance' => $wallet->balance
         ]);
     }
@@ -83,7 +83,7 @@ class WalletController extends Controller
     {
         // проверка на достаточный баланс
         if ($wallet->balance < $amount) {
-            throw new \Exception('Недостаточно средств в кошельке');
+            throw new \Exception('Insufficient funds in wallet');
         }
 
         $wallet->balance -= $amount;

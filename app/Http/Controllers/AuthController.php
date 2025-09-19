@@ -16,15 +16,15 @@ class AuthController extends Controller
             'phone'    => 'required|size:9',
             'password' => 'required',
         ], [
-            'phone.required' => 'Номер телефона обязателен',
-            'phone.size'     => 'Номер телефона должен состоять из 9 цифр',
-            'password.required' => 'Пароль обязателен',
+            'phone.required' => 'Phone number is required',
+            'phone.size'     => 'Phone number must be 9 digits',
+            'password.required' => 'Password is required',
         ]);
 
         $user = User::where('phone', $request->phone)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Неверный логин или пароль'], 401);
+            return response()->json(['message' => 'Invalid login or password'], 401);
         }
 
         // Удаляем старые токены
@@ -33,7 +33,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message'      => 'Вход выполнен успешно',
+            'message'      => 'Login successful',
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'user'         => $user,
@@ -46,9 +46,9 @@ class AuthController extends Controller
         $request->validate([
             'phone' => 'required|size:9|exists:users,phone',
         ], [
-            'phone.required' => 'Номер телефона обязателен',
-            'phone.size'     => 'Номер телефона должен состоять из 9 цифр',
-            'phone.exists'   => 'Пользователь с таким номером не найден',
+            'phone.required' => 'Phone number is required',
+            'phone.size'     => 'Phone number must be 9 digits',
+            'phone.exists'   => 'User with this phone number not found',
         ]);
 
         $user = User::where('phone', $request->phone)->first();
@@ -72,11 +72,11 @@ class AuthController extends Controller
         if ($response->failed()) {
             Cache::forget('reset_user_' . $verificationId);
             Cache::forget('reset_user_' . $verificationId . '_attempts');
-            return response()->json(['message' => 'Не удалось отправить SMS, попробуйте снова'], 500);
+            return response()->json(['message' => 'Failed to send SMS, please try again'], 500);
         }
 
         return response()->json([
-            'message' => 'На ваш номер отправлено SMS для подтверждения',
+            'message' => 'SMS sent to your number for confirmation',
             'verification_id' => $verificationId,
         ]);
     }
@@ -90,9 +90,9 @@ class AuthController extends Controller
             'message' => 'required|string',
             'password' => 'required|min:6|confirmed',
         ], [
-            'password.required'  => 'Пароль обязателен',
-            'password.min'       => 'Пароль должен содержать минимум 6 символов',
-            'password.confirmed' => 'Пароли не совпадают',
+            'password.required'  => 'Password is required',
+            'password.min'       => 'Password must be at least 6 characters',
+            'password.confirmed' => 'Passwords do not match',
         ]);
 
         $key = 'reset_user_' . $request->verification_id;
@@ -101,14 +101,14 @@ class AuthController extends Controller
         $userId = Cache::get($key);
 
         if (!$userId) {
-            return response()->json(['message' => 'Срок подтверждения истёк или запрос не найден'], 422);
+            return response()->json(['message' => 'Confirmation period expired or request not found'], 422);
         }
 
         $user = User::find($userId);
         if (!$user) {
             Cache::forget($key);
             Cache::forget($attemptsKey);
-            return response()->json(['message' => 'Пользователь не найден'], 422);
+            return response()->json(['message' => 'User not found'], 422);
         }
 
         // Проверка тестового текста
@@ -118,10 +118,10 @@ class AuthController extends Controller
             if ($attempts >= 3) {
                 Cache::forget($key);
                 Cache::forget($attemptsKey);
-                return response()->json(['message' => 'Превышено количество попыток. Попробуйте снова'], 422);
+                return response()->json(['message' => 'Maximum attempts exceeded. Please try again'], 422);
             }
 
-            return response()->json(['message' => 'Неверный код подтверждения. Попробуйте снова'], 422);
+            return response()->json(['message' => 'Invalid confirmation code. Please try again'], 422);
         }
 
         // Всё ок → обновляем пароль
@@ -132,7 +132,7 @@ class AuthController extends Controller
         Cache::forget($attemptsKey);
 
         return response()->json([
-            'message' => 'Пароль успешно обновлён',
+            'message' => 'Password updated successfully',
             'success' => true,
         ], 201);
     }
@@ -141,6 +141,6 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Вы вышли из системы']);
+        return response()->json(['message' => 'You have logged out']);
     }
 }

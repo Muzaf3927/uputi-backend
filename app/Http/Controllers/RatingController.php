@@ -27,7 +27,7 @@ class RatingController extends Controller
             ->first();
 
         if ($existing) {
-            return response()->json(['message' => 'Вы уже оставили отзыв этому пользователю за эту поездку.'], 422);
+            return response()->json(['message' => 'You have already left a review for this user for this trip.'], 422);
         }
 
         $rating = Rating::create([
@@ -39,7 +39,7 @@ class RatingController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Оценка успешно сохранена.',
+            'message' => 'Rating saved successfully.',
             'rating' => $rating
         ]);
     }
