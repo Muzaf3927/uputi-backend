@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TripController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -64,6 +65,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ratings/{trip}/to/{toUser}', [RatingController::class, 'rateUser']);  //поставить оценку
     Route::get('/ratings/user/{user}', [RatingController::class, 'getUserRatings']);  //отзывы пользователя
     Route::get('/ratings/given', [RatingController::class, 'getMyRatingsGiven']); //мои отзывы
+
+    //Profile
+    Route::get('/users/me', [UserController::class, 'me']);
+    Route::get('/users/{user}', [UserController::class, 'user']);
 
     //Выйти
     Route::post('/logout', [AuthController::class, 'logout']); //выход
