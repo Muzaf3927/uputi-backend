@@ -61,6 +61,39 @@ class TripController extends Controller
 
     }
 
+    public function filter(Request $request)
+    {
+        $request->validate([
+            'from_city' => 'required|string|max:255',
+            'to_city'   => 'required|string|max:255',
+            'date'      => 'nullable|date',
+            'time'      => 'nullable|date_format:H:i',
+        ]);
+
+        $trips = Trip::with('driver')
+            ->where('status', 'active')
+            ->where('from_city', $request->from_city)
+            ->where('to_city', $request->to_city)
+            ->when($request->date, function ($query) use ($request) {
+                $query->where('date', $request->date);
+            })
+            ->when($request->time, function ($query) use ($request) {
+                $query->where('time', '>=', $request->time); // можно поменять на точное совпадение
+            })
+            ->orderBy('date')
+            ->orderBy('time')
+            ->get()
+            ->map(function ($trip) {
+                $trip->available_seats = $trip->available_seats;
+                $trip->booked_seats = $trip->booked_seats;
+                return $trip;
+            });
+
+        return response()->json([
+            'trips' => $trips
+        ]);
+    }
+
     public function index()
     {
         $trips = Trip::with('driver')

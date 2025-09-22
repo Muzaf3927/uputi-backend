@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/trip', [TripController::class, 'store']); // создать
     Route::get('/my-trips', [TripController::class, 'myTrips']); //мои поездки
     Route::get('/trips', [TripController::class, 'index']); //все поездки
+    Route::get('/trips/filter', [TripController::class, 'filter']);
     Route::patch('/trips/{trip}', [TripController::class, 'update']);   // обновить поездку
     Route::delete('/trips/{trip}', [TripController::class, 'destroy']); // удалить поездку
     Route::post('/trips/{trip}/complete', [TripController::class, 'complete']); // завершить поездку
