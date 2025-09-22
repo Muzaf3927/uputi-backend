@@ -64,8 +64,8 @@ class TripController extends Controller
     public function filter(Request $request)
     {
         $request->validate([
-            'from_city' => 'required|string|max:255',
-            'to_city'   => 'required|string|max:255',
+            'from_city' => 'nullable|string|max:255',
+            'to_city'   => 'nullable|string|max:255',
             'date'      => 'nullable|date',
             'time'      => 'nullable|date_format:H:i',
         ]);
