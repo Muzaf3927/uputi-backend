@@ -72,26 +72,28 @@ class TripController extends Controller
 
         $trips = Trip::with('driver')
             ->where('status', 'active')
-            ->where('from_city', $request->from_city)
-            ->where('to_city', $request->to_city)
+            ->when($request->from_city, function ($query) use ($request) {
+                $query->where('from_city', $request->from_city);
+            })
+            ->when($request->to_city, function ($query) use ($request) {
+                $query->where('to_city', $request->to_city);
+            })
             ->when($request->date, function ($query) use ($request) {
                 $query->where('date', $request->date);
             })
             ->when($request->time, function ($query) use ($request) {
-                $query->where('time', '>=', $request->time); // можно поменять на точное совпадение
+                $query->where('time', '>=', $request->time);
             })
             ->orderBy('date')
             ->orderBy('time')
-            ->get()
-            ->map(function ($trip) {
+            ->paginate(10) // 👈 пагинация
+            ->through(function ($trip) {
                 $trip->available_seats = $trip->available_seats;
                 $trip->booked_seats = $trip->booked_seats;
                 return $trip;
             });
 
-        return response()->json([
-            'trips' => $trips
-        ]);
+        return response()->json($trips);
     }
 
     public function index()
