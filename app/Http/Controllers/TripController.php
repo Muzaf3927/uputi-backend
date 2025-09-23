@@ -61,7 +61,7 @@ class TripController extends Controller
 
     }
 
-    public function filter(Request $request)
+    public function index(Request $request)
     {
         $request->validate([
             'from_city' => 'nullable|string|max:255',
@@ -86,7 +86,7 @@ class TripController extends Controller
             })
             ->orderBy('date')
             ->orderBy('time')
-            ->paginate(10) // 👈 пагинация
+            ->paginate(10) // если не хочешь пагинацию → поменяй на get()
             ->through(function ($trip) {
                 $trip->available_seats = $trip->available_seats;
                 $trip->booked_seats = $trip->booked_seats;
@@ -94,23 +94,6 @@ class TripController extends Controller
             });
 
         return response()->json($trips);
-    }
-
-    public function index()
-    {
-        $trips = Trip::with('driver')
-            ->where('status', 'active')
-            ->orderBy('date')
-            ->get()
-            ->map(function ($trip) {
-                $trip->available_seats = $trip->available_seats;
-                $trip->booked_seats = $trip->booked_seats;
-                return $trip;
-            });
-
-        return response()->json([
-            'trips' => $trips
-        ]);
     }
 
     public function destroy(Trip $trip)
