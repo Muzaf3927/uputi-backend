@@ -70,7 +70,9 @@ class TripController extends Controller
             'time'      => 'nullable|date_format:H:i',
         ]);
 
-        $trips = Trip::with('driver')
+        $trips = Trip::with(['driver', 'bookings' => function ($query) {
+                $query->where('user_id', Auth::id());
+            }])
             ->where('status', 'active')
             ->when($request->from_city, function ($query) use ($request) {
                 $query->where('from_city', $request->from_city);
@@ -90,6 +92,22 @@ class TripController extends Controller
             ->through(function ($trip) {
                 $trip->available_seats = $trip->available_seats;
                 $trip->booked_seats = $trip->booked_seats;
+                
+                // Добавляем информацию о заявке пользователя
+                $userBooking = $trip->bookings->first();
+                $trip->my_booking = $userBooking ? [
+                    'id' => $userBooking->id,
+                    'status' => $userBooking->status,
+                    'seats' => $userBooking->seats,
+                    'offered_price' => $userBooking->offered_price,
+                    'comment' => $userBooking->comment,
+                    'can_cancel' => in_array($userBooking->status, ['pending', 'confirmed']),
+                    'status_message' => $this->getBookingStatusMessage($userBooking->status)
+                ] : null;
+                
+                // Убираем bookings из ответа, так как теперь это my_booking
+                unset($trip->bookings);
+                
                 return $trip;
             });
 
@@ -170,6 +188,25 @@ class TripController extends Controller
             'message' => 'Trip completed!',
             'trip' => $trip
         ]);
+    }
+
+    /**
+     * Получить сообщение о статусе заявки
+     */
+    private function getBookingStatusMessage($status)
+    {
+        switch ($status) {
+            case 'pending':
+                return 'Ваша заявка ожидает подтверждения';
+            case 'confirmed':
+                return 'Ваша заявка подтверждена';
+            case 'declined':
+                return 'Ваша заявка отклонена';
+            case 'cancelled':
+                return 'Ваша заявка отменена';
+            default:
+                return 'Неизвестный статус';
+        }
     }
 }
 
