@@ -173,21 +173,37 @@ class BookingController extends Controller
             return response()->json(['message' => 'No access'], 403);
         }
 
-        if (in_array($booking->status, ['confirmed', 'pending', 'declined', 'cancelled'])) {
+        if (in_array($booking->status, ['confirmed', 'pending', 'declined'])) {
             $oldStatus = $booking->status;
-            $booking->status = 'cancelled';
-            $booking->save();
+            $trip = $booking->trip;
+            $passengerName = Auth::user()->name;
 
             // Если отменяем подтвержденное бронирование, возвращаем места
             if ($oldStatus === 'confirmed') {
-                $trip = $booking->trip;
                 $trip->seats += $booking->seats;
                 $trip->save();
+
+                // Отправляем уведомление водителю
+                Notification::create([
+                    'user_id' => $trip->user_id, // водитель
+                    'sender_id' => Auth::id(), // пассажир
+                    'type' => 'booking_cancelled_by_passenger',
+                    'message' => "{$passengerName} отменил заявку на поездку {$trip->from_city} → {$trip->to_city}",
+                    'data' => json_encode([
+                        'trip_id' => $trip->id,
+                        'booking_id' => $booking->id,
+                        'passenger_name' => $passengerName,
+                        'old_status' => $oldStatus
+                    ]),
+                ]);
             }
 
+            $booking->delete();
+
             return response()->json([
-                'message' => 'Booking cancelled',
-                'trip_seats_remaining' => $booking->trip->seats
+                'message' => 'Заявка успешно отменена',
+                'trip_seats_remaining' => $trip->seats,
+                'deleted' => true
             ]);
         }
 
