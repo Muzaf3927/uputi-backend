@@ -24,6 +24,7 @@ class ChatController extends Controller
             'sender_id' => Auth::id(),
             'receiver_id' => $request->receiver_id,
             'message' => $request->message,
+            'is_read' => true, // исходящие сообщения помечаем как прочитанные
         ]);
 
         // ➕ Создаем уведомление
@@ -99,10 +100,33 @@ class ChatController extends Controller
             ->get();
 
         // Подгружаем инфу о собеседнике и поездке
-        $chats = $chats->map(function ($chat) {
+        $chats = $chats->map(function ($chat) use ($userId) {
             $chat->partner = User::select('id', 'name', 'avatar')
                 ->find($chat->chat_partner_id);
             $chat->trip = Trip::find($chat->trip_id);
+
+            // Непрочитанные сообщения по этому чату для текущего пользователя
+            $chat->unread_count = ChatMessage::where('trip_id', $chat->trip_id)
+                ->where('receiver_id', $userId)
+                ->where('sender_id', $chat->chat_partner_id)
+                ->where('is_read', false)
+                ->count();
+
+            // Последнее сообщение и его статус прочтения
+            $lastMessage = ChatMessage::where('trip_id', $chat->trip_id)
+                ->where(function ($q) use ($userId, $chat) {
+                    $q->where(function ($q2) use ($userId, $chat) {
+                        $q2->where('sender_id', $userId)
+                           ->where('receiver_id', $chat->chat_partner_id);
+                    })->orWhere(function ($q2) use ($userId, $chat) {
+                        $q2->where('sender_id', $chat->chat_partner_id)
+                           ->where('receiver_id', $userId);
+                    });
+                })
+                ->orderByDesc('created_at')
+                ->first();
+
+            $chat->last_message_is_read = $lastMessage?->is_read ?? true;
             return $chat;
         });
 
