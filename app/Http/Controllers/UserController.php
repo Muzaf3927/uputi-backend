@@ -22,4 +22,22 @@ class UserController extends Controller
     {
         return response()->json($user);
     }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|size:9|unique:users,phone,' . $user->id,
+            'avatar' => 'sometimes|string|max:255',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ]);
+    }
 }
