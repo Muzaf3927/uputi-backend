@@ -50,6 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/bookings', [BookingController::class, 'myBookings']); // мои заявки
     Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']); // заявки на мою поездку
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']); // пассажир отменяет
+    // Pending lists
+    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']); // мои ожидающие подтверждения
+    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']); // ожидающие ко мне
     //Messages - Чаты
     Route::post('/chats/{trip}/send', [ChatController::class, 'sendMessage']); //отправить сообщение
     Route::get('/chats/{trip}/with/{receiver}', [ChatController::class, 'getChatMessages']); //получить чат

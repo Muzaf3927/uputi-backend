@@ -230,5 +230,31 @@ class BookingController extends Controller
 
         return response()->json(['bookings' => $bookings]);
     }
+
+    // List my own pending booking requests (I sent, driver not confirmed yet)
+    public function myPendingBookings()
+    {
+        $bookings = Booking::with('trip')
+            ->where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['bookings' => $bookings]);
+    }
+
+    // List pending requests to my trips (others sent to my trips, I haven't confirmed yet)
+    public function pendingBookingsToMyTrips()
+    {
+        $bookings = Booking::with(['trip', 'user'])
+            ->where('status', 'pending')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['bookings' => $bookings]);
+    }
 }
 
