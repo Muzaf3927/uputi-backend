@@ -111,9 +111,9 @@ class BookingController extends Controller
                         'trip_id' => $trip->id,
                         'sender_id' => $trip->user_id, // водитель
                         'receiver_id' => $booking->user_id, // пассажир
-                        'message' => "Hello! I confirmed your booking request for trip {$trip->from_city} → {$trip->to_city}. " .
-                            "You offered: {$booking->offered_price} sum. " .
-                            ($booking->comment ? "Comment: {$booking->comment}" : ""),
+                        'message' => "Здравствуйте! Я подтвердил вашу заявку на поездку {$trip->from_city} → {$trip->to_city}. " .
+                            "Вы предложили: {$booking->offered_price} сум. " .
+                            ($booking->comment ? "Комментарий: {$booking->comment}" : ""),
                     ]);
 
                     // Создаем уведомление для пассажира

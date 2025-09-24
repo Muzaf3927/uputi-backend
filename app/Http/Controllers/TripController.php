@@ -53,13 +53,16 @@ class TripController extends Controller
         ]);
     }
 
-    public function myTrips()
+    public function myTrips(Request $request)
     {
-        $trips = Trip::where('user_id', Auth::id())->orderByDesc('date')->get();
-        return response()->json([
-            'trips' => $trips
-        ]);
+        // Кол-во записей на страницу (по умолчанию 10, можно передавать через query ?per_page=5)
+        $perPage = $request->get('per_page', 5);
 
+        $trips = Trip::where('user_id', Auth::id())
+            ->orderByDesc('date')
+            ->paginate($perPage);
+
+        return response()->json($trips);
     }
 
     public function index(Request $request)
@@ -71,30 +74,23 @@ class TripController extends Controller
             'time'      => 'nullable|date_format:H:i',
         ]);
 
+        $perPage = $request->get('per_page', 10);
+
         $trips = Trip::with(['driver', 'bookings' => function ($query) {
-                $query->where('user_id', Auth::id());
-            }])
+            $query->where('user_id', Auth::id());
+        }])
             ->where('status', 'active')
-            ->when($request->from_city, function ($query) use ($request) {
-                $query->where('from_city', $request->from_city);
-            })
-            ->when($request->to_city, function ($query) use ($request) {
-                $query->where('to_city', $request->to_city);
-            })
-            ->when($request->date, function ($query) use ($request) {
-                $query->where('date', $request->date);
-            })
-            ->when($request->time, function ($query) use ($request) {
-                $query->where('time', '>=', $request->time);
-            })
+            ->when($request->from_city, fn($query) => $query->where('from_city', $request->from_city))
+            ->when($request->to_city, fn($query) => $query->where('to_city', $request->to_city))
+            ->when($request->date, fn($query) => $query->where('date', $request->date))
+            ->when($request->time, fn($query) => $query->where('time', '>=', $request->time))
             ->orderBy('date')
             ->orderBy('time')
-            ->paginate(10) // если не хочешь пагинацию → поменяй на get()
+            ->paginate($perPage)
             ->through(function ($trip) {
                 $trip->available_seats = $trip->available_seats;
                 $trip->booked_seats = $trip->booked_seats;
-                
-                // Добавляем информацию о заявке пользователя
+
                 $userBooking = $trip->bookings->first();
                 $trip->my_booking = $userBooking ? [
                     'id' => $userBooking->id,
@@ -105,10 +101,9 @@ class TripController extends Controller
                     'can_cancel' => in_array($userBooking->status, ['pending', 'confirmed']),
                     'status_message' => $this->getBookingStatusMessage($userBooking->status)
                 ] : null;
-                
-                // Убираем bookings из ответа, так как теперь это my_booking
+
                 unset($trip->bookings);
-                
+
                 return $trip;
             });
 
