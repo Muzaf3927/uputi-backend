@@ -40,10 +40,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/trip', [TripController::class, 'store']); // создать
     Route::get('/my-trips', [TripController::class, 'myTrips']); //мои поездки
     Route::get('/trips', [TripController::class, 'index']); //все поездки
-    Route::get('/trips/filter', [TripController::class, 'filter']);
     Route::post('/trips/{trip}', [TripController::class, 'update']);   // обновить поездку
     Route::delete('/trips/{trip}', [TripController::class, 'destroy']); // удалить поездку
     Route::post('/trips/{trip}/complete', [TripController::class, 'complete']); // завершить поездку
+    Route::get('/trips/completed/mine', [TripController::class, 'myCompletedTrips']); // мои завершенные поездки (как водитель)
+    Route::get('/trips/completed/as-passenger', [TripController::class, 'myCompletedTripsAsPassenger']); // завершенные поездки, где я пассажир
     //Bookings - Броны
     Route::post('/trips/{trip}/booking', [BookingController::class, 'store']); //бронировать
     Route::post('/bookings/{booking}', [BookingController::class, 'update']); //бронировать

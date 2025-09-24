@@ -190,6 +190,32 @@ class TripController extends Controller
         ]);
     }
 
+    public function myCompletedTrips()
+    {
+        $trips = Trip::where('user_id', Auth::id())
+            ->where('status', 'completed')
+            ->orderByDesc('date')
+            ->orderByDesc('time')
+            ->get();
+
+        return response()->json(['trips' => $trips]);
+    }
+
+    public function myCompletedTripsAsPassenger()
+    {
+        $trips = Trip::where('status', 'completed')
+            ->whereHas('bookings', function ($q) {
+                $q->where('user_id', Auth::id())
+                  ->where('status', 'confirmed');
+            })
+            ->with(['driver'])
+            ->orderByDesc('date')
+            ->orderByDesc('time')
+            ->get();
+
+        return response()->json(['trips' => $trips]);
+    }
+
     /**
      * Получить сообщение о статусе заявки
      */
