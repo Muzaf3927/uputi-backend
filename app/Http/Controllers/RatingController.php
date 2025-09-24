@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\Rating;
 use App\Models\Trip;
 use App\Models\User;
@@ -20,6 +21,43 @@ class RatingController extends Controller
 
         $fromUser = Auth::user();
 
+        if ($fromUser->id === $toUser->id) {
+            return response()->json(['message' => 'You cannot rate yourself.'], 422);
+        }
+
+        // Trip must be completed
+        if ($trip->status !== 'completed') {
+            return response()->json(['message' => 'You can rate only after trip completion.'], 422);
+        }
+
+        // Check participation and direction (driver -> passenger or passenger -> driver)
+        $fromIsDriver = $trip->user_id === $fromUser->id;
+        $toIsDriver = $trip->user_id === $toUser->id;
+
+        // from passenger to driver
+        $fromIsConfirmedPassenger = Booking::where('trip_id', $trip->id)
+            ->where('user_id', $fromUser->id)
+            ->where('status', 'confirmed')
+            ->exists();
+
+        // to passenger must have confirmed booking
+        $toIsConfirmedPassenger = Booking::where('trip_id', $trip->id)
+            ->where('user_id', $toUser->id)
+            ->where('status', 'confirmed')
+            ->exists();
+
+        $allowed = false;
+        if ($fromIsDriver && !$toIsDriver && $toIsConfirmedPassenger) {
+            $allowed = true; // driver rating passenger
+        }
+        if (!$fromIsDriver && $toIsDriver && $fromIsConfirmedPassenger) {
+            $allowed = true; // passenger rating driver
+        }
+
+        if (!$allowed) {
+            return response()->json(['message' => 'You are not allowed to rate this user for this trip.'], 403);
+        }
+
         // запрет на повторную оценку
         $existing = Rating::where('from_user_id', $fromUser->id)
             ->where('to_user_id', $toUser->id)
@@ -37,6 +75,17 @@ class RatingController extends Controller
             'rating' => $request->rating,
             'comment' => $request->comment,
         ]);
+
+        // Update target user's aggregate rating
+        $newCount = (int) $toUser->rating_count + 1;
+        $currentAverage = (float) $toUser->rating; // decimal(2,1)
+        $newAverage = $newCount > 0
+            ? round((($currentAverage * (int) $toUser->rating_count) + (int) $request->rating) / $newCount, 1)
+            : (float) $request->rating;
+
+        $toUser->rating_count = $newCount;
+        $toUser->rating = $newAverage;
+        $toUser->save();
 
         return response()->json([
             'message' => 'Rating saved successfully.',

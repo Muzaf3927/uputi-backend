@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Trip;
+use App\Models\Rating;
 use App\Models\Booking;
 use App\Models\Wallet;
 use App\Models\Transaction;
@@ -194,9 +195,39 @@ class TripController extends Controller
     {
         $trips = Trip::where('user_id', Auth::id())
             ->where('status', 'completed')
+            ->with(['bookings' => function ($q) {
+                $q->where('status', 'confirmed')->with('passenger:id,name');
+            }])
             ->orderByDesc('date')
             ->orderByDesc('time')
-            ->get();
+            ->get()
+            ->map(function ($trip) {
+                $participants = $trip->bookings->map(function ($b) use ($trip) {
+                    $alreadyRated = Rating::where('from_user_id', Auth::id())
+                        ->where('to_user_id', $b->user_id)
+                        ->where('trip_id', $trip->id)
+                        ->exists();
+
+                    return [
+                        'user' => [
+                            'id' => $b->passenger?->id,
+                            'name' => $b->passenger?->name,
+                        ],
+                        'can_rate' => !$alreadyRated,
+                    ];
+                });
+
+                return [
+                    'id' => $trip->id,
+                    'from_city' => $trip->from_city,
+                    'to_city' => $trip->to_city,
+                    'date' => $trip->date,
+                    'time' => $trip->time,
+                    'price' => $trip->price,
+                    'participants' => $participants,
+                    'role' => 'driver'
+                ];
+            });
 
         return response()->json(['trips' => $trips]);
     }
@@ -208,10 +239,31 @@ class TripController extends Controller
                 $q->where('user_id', Auth::id())
                   ->where('status', 'confirmed');
             })
-            ->with(['driver'])
+            ->with(['driver:id,name'])
             ->orderByDesc('date')
             ->orderByDesc('time')
-            ->get();
+            ->get()
+            ->map(function ($trip) {
+                $alreadyRated = Rating::where('from_user_id', Auth::id())
+                    ->where('to_user_id', $trip->user_id)
+                    ->where('trip_id', $trip->id)
+                    ->exists();
+
+                return [
+                    'id' => $trip->id,
+                    'from_city' => $trip->from_city,
+                    'to_city' => $trip->to_city,
+                    'date' => $trip->date,
+                    'time' => $trip->time,
+                    'price' => $trip->price,
+                    'driver' => [
+                        'id' => $trip->driver?->id,
+                        'name' => $trip->driver?->name,
+                    ],
+                    'can_rate' => !$alreadyRated,
+                    'role' => 'passenger'
+                ];
+            });
 
         return response()->json(['trips' => $trips]);
     }
