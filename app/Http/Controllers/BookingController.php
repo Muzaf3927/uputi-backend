@@ -214,6 +214,7 @@ class BookingController extends Controller
     {
         $bookings = Booking::with('trip')
             ->where('user_id', Auth::id())
+            ->where('status', 'confirmed') // ✅ только подтверждённые
             ->orderByDesc('created_at')
             ->get();
 
@@ -223,10 +224,13 @@ class BookingController extends Controller
     public function tripBookings(Trip $trip)
     {
         if ($trip->user_id !== Auth::id()) {
-            return response()->json(['message' => 'No access'], 403);
+            return response()->json(['message' => 'Нет доступа'], 403);
         }
 
-        $bookings = $trip->bookings()->with('user')->get();
+        $bookings = $trip->bookings()
+            ->where('status', 'confirmed') // ✅ только подтверждённые
+            ->with('user')
+            ->get();
 
         return response()->json(['bookings' => $bookings]);
     }
