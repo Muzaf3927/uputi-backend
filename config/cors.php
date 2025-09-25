@@ -7,12 +7,14 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://192.168.1.234:3000',
-        'http://localhost:5173',
         'https://ride-share-pro.netlify.app', // ← Netlify фронт
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '/^http:\/\/localhost:\d+$/', // разрешает любой localhost порт
+        '/^http:\/\/127\.0\.0\.1:\d+$/', // разрешает 127.0.0.1 с любым портом
+        '/^http:\/\/192\.168\.\d+\.\d+:\d+$/', // разрешает локальную сеть
+    ],
 
     'allowed_headers' => ['*'],
 
