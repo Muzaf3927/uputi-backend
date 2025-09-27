@@ -209,8 +209,8 @@ class BookingController extends Controller
         ]);
     }
 
-    // Moi bronirovaniya (gde ya passazhir, status confirmed)
-    public function myBookings()
+    // 1. Moi bronirovaniya (gde ya passazhir, status confirmed)
+    public function myConfirmedBookings()
     {
         $bookings = Booking::with('trip')
             ->where('user_id', Auth::id())
@@ -218,25 +218,16 @@ class BookingController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json(['bookings' => $bookings]);
-    }
-
-    // Zayavki na moi poezdki (gde ya voditel, status confirmed)
-    public function tripBookings(Trip $trip)
-    {
-        if ($trip->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Net dostupa'], 403);
-        }
-
-        $bookings = $trip->bookings()
+        // Отмечаем все мои confirmed бронирования как прочитанные
+        Booking::where('user_id', Auth::id())
             ->where('status', 'confirmed')
-            ->with('user')
-            ->get();
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
 
         return response()->json(['bookings' => $bookings]);
     }
 
-    // Moi zaprosy (gde ya passazhir, status pending)
+    // 2. Moi zaprosy (gde ya passazhir, status pending)
     public function myPendingBookings()
     {
         $bookings = Booking::with('trip')
@@ -245,10 +236,38 @@ class BookingController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        // Отмечаем все мои pending запросы как прочитанные
+        Booking::where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
         return response()->json(['bookings' => $bookings]);
     }
 
-    // Zayavki na moi poezdki (gde ya voditel, status pending)
+    // 3. Zayavki na moi poezdki (gde ya voditel, status confirmed)
+    public function confirmedBookingsToMyTrips()
+    {
+        $bookings = Booking::with(['trip', 'user'])
+            ->where('status', 'confirmed')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Отмечаем все confirmed заявки на мои поездки как прочитанные
+        Booking::where('status', 'confirmed')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['bookings' => $bookings]);
+    }
+
+    // 4. Zayavki na moi poezdki (gde ya voditel, status pending)
     public function pendingBookingsToMyTrips()
     {
         $bookings = Booking::with(['trip', 'user'])
@@ -259,7 +278,50 @@ class BookingController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        // Отмечаем все pending заявки на мои поездки как прочитанные
+        Booking::where('status', 'pending')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
         return response()->json(['bookings' => $bookings]);
     }
-    
+
+    // Получить количество непрочитанных заявок для каждого раздела
+    public function unreadCount()
+    {
+        $myConfirmedUnread = Booking::where('user_id', Auth::id())
+            ->where('status', 'confirmed')
+            ->where('is_read', false)
+            ->count();
+
+        $myPendingUnread = Booking::where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->where('is_read', false)
+            ->count();
+
+        $toMyTripsConfirmedUnread = Booking::where('status', 'confirmed')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->where('is_read', false)
+            ->count();
+
+        $toMyTripsPendingUnread = Booking::where('status', 'pending')
+            ->whereHas('trip', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json([
+            'my_confirmed_unread' => $myConfirmedUnread,
+            'my_pending_unread' => $myPendingUnread,
+            'to_my_trips_confirmed_unread' => $toMyTripsConfirmedUnread,
+            'to_my_trips_pending_unread' => $toMyTripsPendingUnread,
+        ]);
+    }
+
 }

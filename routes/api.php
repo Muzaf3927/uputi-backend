@@ -57,11 +57,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/trips/{trip}/booking', [BookingController::class, 'store']);// zabronirovat poezdku
     Route::post('/bookings/{booking}', [BookingController::class, 'update']);// obnovit status bronirovaniya (naprimer, prinyat ili otklonit)
-    Route::get('/bookings', [BookingController::class, 'myBookings']);// spisok vseh moih zayavok (gde ya uchastvuyu)
-    Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']);// spisok vseh zayavok na moe poezdki
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);// otmenit moe bronirovanie (passazhir otmenyaet)
-    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']);// spisok moih ozhidayushih podtverzhdeniya zayavok
-    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']);// spisok zayavok, kotorye ozhidayut moego podtverzhdeniya
+    
+    // 4 отдельных API для разделов bookings
+    Route::get('/bookings/my/confirmed', [BookingController::class, 'myConfirmedBookings']);// 1. moi bronirovaniya (confirmed)
+    Route::get('/bookings/my/pending', [BookingController::class, 'myPendingBookings']);// 2. moi zaprosy (pending)
+    Route::get('/bookings/to-my-trips/confirmed', [BookingController::class, 'confirmedBookingsToMyTrips']);// 3. zayavki na moi poezdki (confirmed)
+    Route::get('/bookings/to-my-trips/pending', [BookingController::class, 'pendingBookingsToMyTrips']);// 4. zayavki na moi poezdki (pending)
+    Route::get('/bookings/unread-count', [BookingController::class, 'unreadCount']);// количество непрочитанных для каждого раздела
     //Messages - Чаты
     Route::post('/chats/{trip}/send', [ChatController::class, 'sendMessage']); //отправить сообщение
     Route::get('/chats/{trip}/with/{receiver}', [ChatController::class, 'getChatMessages']); //получить чат
