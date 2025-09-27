@@ -52,12 +52,34 @@ class TripController extends Controller
 
     public function myTrips(Request $request)
     {
-        // Кол-во записей на страницу (по умолчанию 10, можно передавать через query ?per_page=5)
+        // Кол-во записей на страницу (по умолчанию 5)
         $perPage = $request->get('per_page', 5);
 
         $trips = Trip::where('user_id', Auth::id())
             ->orderByDesc('date')
             ->paginate($perPage);
+
+        // Добавляем пассажиров к каждой поездке
+        $trips->getCollection()->transform(function ($trip) {
+            // confirmed пассажиры
+            $confirmed = $trip->bookings()
+                ->where('status', 'confirmed')
+                ->with('user:id,name')
+                ->get()
+                ->pluck('user');
+
+            // pending пассажиры
+            $pending = $trip->bookings()
+                ->where('status', 'pending')
+                ->with('user:id,name')
+                ->get()
+                ->pluck('user');
+
+            $trip->confirmed_passengers = $confirmed;
+            $trip->pending_passengers = $pending;
+
+            return $trip;
+        });
 
         return response()->json($trips);
     }
