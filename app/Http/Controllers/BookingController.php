@@ -218,10 +218,6 @@ class BookingController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        Booking::where('user_id', Auth::id())
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
         return response()->json(['bookings' => $bookings]);
     }
 
@@ -237,10 +233,6 @@ class BookingController extends Controller
             ->with('user')
             ->get();
 
-        $trip->bookings()
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
         return response()->json(['bookings' => $bookings]);
     }
 
@@ -252,11 +244,6 @@ class BookingController extends Controller
             ->where('status', 'pending')
             ->orderByDesc('created_at')
             ->get();
-
-        Booking::where('user_id', Auth::id())
-            ->where('status', 'pending')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
 
         return response()->json(['bookings' => $bookings]);
     }
@@ -272,23 +259,7 @@ class BookingController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        Booking::where('status', 'pending')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
         return response()->json(['bookings' => $bookings]);
     }
-
-    // Kolichestvo neprochitannyh zayavok
-    public function unreadCount()
-    {
-        $count = Booking::where('user_id', Auth::id())
-            ->where('is_read', false)
-            ->count();
-
-        return response()->json(['unread_count' => $count]);
-    }
+    
 }
