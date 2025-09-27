@@ -58,7 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/trips/{trip}/booking', [BookingController::class, 'store']);// zabronirovat poezdku
     Route::post('/bookings/{booking}', [BookingController::class, 'update']);// obnovit status bronirovaniya (naprimer, prinyat ili otklonit)
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);// otmenit moe bronirovanie (passazhir otmenyaet)
-    
+
+    Route::get('/bookings/trip/{trips}', [BookingController::class, 'show']);
     // 4 отдельных API для разделов bookings
     Route::get('/bookings/my/confirmed', [BookingController::class, 'myConfirmedBookings']);// 1. moi bronirovaniya (confirmed)
     Route::get('/bookings/my/pending', [BookingController::class, 'myPendingBookings']);// 2. moi zaprosy (pending)

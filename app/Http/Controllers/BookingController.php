@@ -324,4 +324,21 @@ class BookingController extends Controller
         ]);
     }
 
+    public function show(Trip $trip)
+    {
+        // Dostup tolko voditely tripa
+        if ($trip->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Net dostupa'], 403);
+        }
+
+        // Berem vse bookingi bez ogranicheniy po statusu
+        $bookings = $trip->bookings()
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['bookings' => $bookings]);
+
+    }
+
 }
