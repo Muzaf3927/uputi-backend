@@ -4,9 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Trip;
 use App\Models\Rating;
-use App\Models\Booking;
-use App\Models\Wallet;
-use App\Models\Transaction;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -172,7 +169,7 @@ class TripController extends Controller
                     'user_id'   => $booking->user_id,      // кому уведомление
                     'sender_id' => $trip->user_id,        // кто отправил (водитель)
                     'type'      => 'trip_completed',
-                    'message'   => "Trip {$trip->from_city} → {$trip->to_city} completed.",
+                    'message'   => "Poezdka {$trip->from_city} → {$trip->to_city} zavershena.",
                     'data'      => json_encode([
                         'trip_id' => $trip->id,
                     ]),
@@ -270,15 +267,15 @@ class TripController extends Controller
     {
         switch ($status) {
             case 'pending':
-                return 'Ваша заявка ожидает подтверждения';
+                return 'Vasha zayavka ojidet potverjdenie';
             case 'confirmed':
-                return 'Ваша заявка подтверждена';
+                return 'Vasha zayavka potverjdena';
             case 'declined':
-                return 'Ваша заявка отклонена';
+                return 'Vasha zayavka otkloneno';
             case 'cancelled':
-                return 'Ваша заявка отменена';
+                return 'Vasha zayavka otmineno';
             default:
-                return 'Неизвестный статус';
+                return 'Neizvestniy status';
         }
     }
 }

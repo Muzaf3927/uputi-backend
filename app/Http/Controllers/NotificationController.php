@@ -30,7 +30,7 @@ class NotificationController extends Controller
         $notification->is_read = true;
         $notification->save();
 
-        return response()->json(['message' => 'Notification read']);
+        return response()->json(['message' => 'Uvedomlenie prochitano']);
     }
 
     public function markAllAsRead()
@@ -38,7 +38,7 @@ class NotificationController extends Controller
         Notification::where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
-        return response()->json(['message' => 'All notifications read']);
+        return response()->json(['message' => 'Vse uvedomleniya prochitany']);
     }
 
     public function unreadCount()

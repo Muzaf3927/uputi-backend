@@ -32,7 +32,7 @@ class ChatController extends Controller
             'user_id' => $request->receiver_id,
             'sender_id' => Auth::id(),
             'type' => 'chat',
-            'message' => 'New message in trip ' . $trip->from_city . ' → ' . $trip->to_city,
+            'message' => 'Novoe soobshchenie v poezdke ' . $trip->from_city . ' → ' . $trip->to_city,
             'data' => json_encode([
                 'trip_id' => $trip->id,
                 'chat_message_id' => $message->id

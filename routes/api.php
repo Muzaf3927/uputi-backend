@@ -46,14 +46,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trips/completed/mine', [TripController::class, 'myCompletedTrips']); // мои завершенные поездки (как водитель)
     Route::get('/trips/completed/as-passenger', [TripController::class, 'myCompletedTripsAsPassenger']); // завершенные поездки, где я пассажир
     //Bookings - Броны
-    Route::post('/trips/{trip}/booking', [BookingController::class, 'store']); //бронировать
-    Route::post('/bookings/{booking}', [BookingController::class, 'update']); //бронировать
-    Route::get('/bookings', [BookingController::class, 'myBookings']); // мои заявки
-    Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']); // заявки на мою поездку
-    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']); // пассажир отменяет
-    // Pending lists
-    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']); // мои ожидающие подтверждения
-    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']); // ожидающие ко мне
+//    Route::post('/trips/{trip}/booking', [BookingController::class, 'store']); //бронировать
+//    Route::post('/bookings/{booking}', [BookingController::class, 'update']); //бронировать
+//    Route::get('/bookings', [BookingController::class, 'myBookings']); // мои заявки
+//    Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']); // заявки на мою поездку
+//    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']); // пассажир отменяет
+//    // Pending lists
+//    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']); // мои ожидающие подтверждения
+//    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']); // ожидающие ко мне
+
+    Route::post('/trips/{trip}/booking', [BookingController::class, 'store']);// zabronirovat poezdku
+    Route::post('/bookings/{booking}', [BookingController::class, 'update']);// obnovit status bronirovaniya (naprimer, prinyat ili otklonit)
+    Route::get('/bookings', [BookingController::class, 'myBookings']);// spisok vseh moih zayavok (gde ya uchastvuyu)
+    Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']);// spisok vseh zayavok na moe poezdki
+    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);// otmenit moe bronirovanie (passazhir otmenyaet)
+    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']);// spisok moih ozhidayushih podtverzhdeniya zayavok
+    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']);// spisok zayavok, kotorye ozhidayut moego podtverzhdeniya
     //Messages - Чаты
     Route::post('/chats/{trip}/send', [ChatController::class, 'sendMessage']); //отправить сообщение
     Route::get('/chats/{trip}/with/{receiver}', [ChatController::class, 'getChatMessages']); //получить чат

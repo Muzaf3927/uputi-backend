@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedInteger('offered_price')->nullable(); // цена, предложенная пассажиром
             $table->text('comment')->nullable(); // комментарий к заявке
             $table->enum('status', ['pending', 'confirmed', 'declined', 'cancelled'])->default('pending');
+            $table->boolean('is_read')->default(false);
             $table->timestamps();
         });
     }

@@ -10,7 +10,7 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'trip_id', 'user_id', 'seats', 'offered_price', 'comment', 'status',
+        'trip_id', 'user_id', 'seats', 'offered_price', 'comment', 'status', 'is_read',
     ];
 
     public function user()
@@ -28,5 +28,9 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    protected $casts = [
+        'is_read' => 'boolean',
+    ];
 }
 

@@ -88,7 +88,7 @@ class RatingController extends Controller
         $toUser->save();
 
         return response()->json([
-            'message' => 'Rating saved successfully.',
+            'message' => 'Otsenka uspeshno sohranena.',
             'rating' => $rating
         ]);
     }
