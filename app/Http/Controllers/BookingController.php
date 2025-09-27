@@ -212,7 +212,7 @@ class BookingController extends Controller
     // 1. Moi bronirovaniya (gde ya passazhir, status confirmed)
     public function myConfirmedBookings()
     {
-        $bookings = Booking::with('trip')
+        $bookings = Booking::with(['trip.driver'])
             ->where('user_id', Auth::id())
             ->where('status', 'confirmed')
             ->orderByDesc('created_at')
