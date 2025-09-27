@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('role')->nullable();
             $table->string('password');
             $table->integer('balance')->default(0);
-            $table->decimal('rating', 2, 1)->default(0);
+            $table->decimal('rating', 2, 1)->default(5.0);
             $table->unsignedInteger('rating_count')->default(0);
             $table->boolean('is_verified')->default(false);
             $table->string('verification_code')->nullable();
