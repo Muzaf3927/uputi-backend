@@ -200,12 +200,12 @@ class BookingController extends Controller
             ]),
         ]);
 
-        $booking->update(['status' => 'cancelled']);
+        // Удаляем бронь вместо смены статуса
+        $booking->delete();
 
         return response()->json([
-            'message' => 'Zayavka uspeshno otmenena',
+            'message' => 'Zayavka uspeshno otmenena i udalena',
             'trip_seats_remaining' => $trip->seats,
-            'status' => 'cancelled'
         ]);
     }
 
