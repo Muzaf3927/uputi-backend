@@ -21,11 +21,11 @@ Route::get('/test-eskiz', function () {
     }
 });
 
-Route::post('/register', [VerifyController::class, 'registerStepOne']);
+Route::post('/register', [VerifyController::class, 'registerStepOne'])->middleware('sms.throttle');
 Route::post('/verify', [VerifyController::class, 'verifySmsAndActivate']);
 
 // Шаг 1: отправка SMS
-Route::post('/reset-password/step-one', [AuthController::class, 'resetPasswordStepOne']);
+Route::post('/reset-password/step-one', [AuthController::class, 'resetPasswordStepOne'])->middleware('sms.throttle');
 
 // Шаг 2: подтверждение кода и смена пароля
 Route::post('/reset-password/step-two', [AuthController::class, 'resetPasswordStepTwo']);
