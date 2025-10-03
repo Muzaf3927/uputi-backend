@@ -16,95 +16,102 @@ class VerifyController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|size:9|unique:users,phone',
+            'phone' => 'required|string|size:9',
             'password' => 'required|string|min:6|confirmed',
-        ], [
-            'phone.unique' => 'You have already registered with this number',
         ]);
 
-        // Создаём временного пользователя
-        $user = User::create([
+        $existing = User::where('phone', $request->phone)->exists();
+        if ($existing) {
+            return response()->json(['message' => 'You have already registered with this number'], 422);
+        }
+
+        // Генерация кода и verification_id
+        $code = rand(100000, 999999);
+        $verificationId = (string) Str::uuid();
+        $ttl = now()->addSeconds(180); // или: $ttl = 30;
+
+        // Сохраняем временные данные в кэш
+        Cache::put("pending_user_{$verificationId}", [
             'name' => $request->name,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
-        ]);
+        ], $ttl);
 
-        // Генерируем verification_id
-        $verificationId = Str::uuid();
+        Cache::put("pending_user_{$verificationId}_code", $code, $ttl);
+        Cache::put("pending_user_{$verificationId}_attempts", 0, $ttl);
 
-        // TTL для подтверждения (10 минут)
-        $ttl = now()->addMinutes(10);
-
-        // Сохраняем ID пользователя в кэш
-        Cache::put('pending_user_' . $verificationId, $user->id, $ttl);
-
-        // Инициализируем счётчик попыток (0)
-        Cache::put('pending_user_' . $verificationId . '_attempts', 0, $ttl);
-
-        // Отправка тестового SMS
-        $response = Http::withToken(env('ESKIZ_TOKEN'))
-            ->asForm()
-            ->post('https://notify.eskiz.uz/api/message/sms/send', [
-                'mobile_phone' => '998' . $request->phone,
-                'message' => "Bu Eskiz dan test",
-                'from' => '4546',
+        // Отправка SMS
+        $response = Http::withBasicAuth('Uputi@2025', 'uputi@2dfS')
+            ->acceptJson()
+            ->post('https://api.telecom-qqm-it.uz/api/v1/agent/sms/send', [
+                'to' => '998' . $request->phone,
+                'senderId' => '2702',
+                'merchantId' => 'MCHUPUTI',
+                'message' => "Vash kod dla vxoda v prilojenii UPuti: $code",
+                'messageId' => $verificationId,
             ]);
 
         if ($response->failed()) {
-            $user->delete();
-            Cache::forget('pending_user_' . $verificationId);
-            Cache::forget('pending_user_' . $verificationId . '_attempts');
+            Cache::forget("pending_user_{$verificationId}");
+            Cache::forget("pending_user_{$verificationId}_code");
+            Cache::forget("pending_user_{$verificationId}_attempts");
+
             return response()->json(['message' => 'Failed to send SMS, please try again'], 500);
         }
 
         return response()->json([
-            'message' => 'Profile created. SMS sent to your number.',
+            'message' => 'Verification code sent to your phone.',
             'verification_id' => $verificationId
         ]);
     }
+
+
 
 
     public function verifySmsAndActivate(Request $request)
     {
         $request->validate([
             'verification_id' => 'required|uuid',
-            'message' => 'required|string',
+            'code' => 'required|digits:6',
         ]);
 
         $key = 'pending_user_' . $request->verification_id;
+        $codeKey = $key . '_code';
         $attemptsKey = $key . '_attempts';
 
-        $userId = Cache::get($key);
+        $userData = Cache::get($key);
+        $cachedCode = Cache::get($codeKey);
 
-        if (!$userId) {
-            return response()->json(['message' => 'Confirmation period expired or profile not found'], 422);
+        if (!$userData || !$cachedCode) {
+            return response()->json(['message' => 'Verification expired or not found.'], 422);
         }
 
-        $user = User::find($userId);
-
-        if (!$user) {
-            Cache::forget($key);
-            Cache::forget($attemptsKey);
-            return response()->json(['message' => 'Profile not found'], 422);
-        }
-
-        if ($request->message !== 'Bu Eskiz dan test') {
+        if ((string) $request->code !== (string) $cachedCode) {
             $attempts = Cache::increment($attemptsKey);
-
             if ($attempts >= 3) {
-                $user->delete();
                 Cache::forget($key);
+                Cache::forget($codeKey);
                 Cache::forget($attemptsKey);
-                return response()->json(['message' => 'Maximum attempts exceeded. Please try registering again.'], 422);
+                return response()->json(['message' => 'Too many attempts. Try registering again.'], 422);
             }
-
-            return response()->json(['message' => 'Invalid confirmation text. Please try again'], 422);
+            return response()->json(['message' => 'Invalid code.'], 422);
         }
 
-        // Успешная активация
+        // Перед созданием — на всякий случай ещё раз проверить, что номер не занят
+        $exists = User::where('phone', $userData['phone'])->exists();
+        if ($exists) {
+            Cache::forget($key);
+            Cache::forget($codeKey);
+            Cache::forget($attemptsKey);
+            return response()->json(['message' => 'Phone already registered.'], 422);
+        }
+
+        // Всё ок — создаём пользователя
+        $user = User::create($userData);
         $token = $user->createToken('auth_token')->plainTextToken;
 
         Cache::forget($key);
+        Cache::forget($codeKey);
         Cache::forget($attemptsKey);
 
         return response()->json([

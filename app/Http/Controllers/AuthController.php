@@ -46,38 +46,37 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|size:9|exists:users,phone',
-        ], [
-            'phone.required' => 'Phone number is required',
-            'phone.size'     => 'Phone number must be 9 digits',
-            'phone.exists'   => 'User with this phone number not found',
         ]);
 
         $user = User::where('phone', $request->phone)->first();
 
-        // Генерируем verification_id
-        $verificationId = Str::uuid();
-        $ttl = now()->addMinutes(10);
+        $code = rand(100000, 999999);
+        $verificationId = (string) Str::uuid();
+        $ttl = now()->addSeconds(180);
 
         Cache::put('reset_user_' . $verificationId, $user->id, $ttl);
+        Cache::put('reset_user_' . $verificationId . '_code', $code, $ttl);
         Cache::put('reset_user_' . $verificationId . '_attempts', 0, $ttl);
 
-        // Отправляем SMS (пока тестовый текст)
-        $response = Http::withToken(env('ESKIZ_TOKEN'))
-            ->asForm()
-            ->post('https://notify.eskiz.uz/api/message/sms/send', [
-                'mobile_phone' => '998' . $request->phone,
-                'message' => "Bu Eskiz dan test", // пока тест, потом можно рандомный
-                'from' => '4546',
+        $response = Http::withBasicAuth('Uputi@2025', 'uputi@2dfS')
+            ->acceptJson()
+            ->post('https://api.telecom-qqm-it.uz/api/v1/agent/sms/send', [
+                'to' => '998' . $request->phone,
+                'senderId' => '2702',
+                'merchantId' => 'MCHUPUTI',
+                'message' => "Vash kod dlya vosstanovleniya parolya UPuti: $code",
+                'messageId' => $verificationId,
             ]);
 
         if ($response->failed()) {
             Cache::forget('reset_user_' . $verificationId);
+            Cache::forget('reset_user_' . $verificationId . '_code');
             Cache::forget('reset_user_' . $verificationId . '_attempts');
             return response()->json(['message' => 'Failed to send SMS, please try again'], 500);
         }
 
         return response()->json([
-            'message' => 'SMS sent to your number for confirmation',
+            'message' => 'Verification code sent to your phone.',
             'verification_id' => $verificationId,
         ]);
     }
@@ -88,36 +87,35 @@ class AuthController extends Controller
     {
         $request->validate([
             'verification_id' => 'required|uuid',
-            'message' => 'required|string',
+            'code' => 'required|digits:6',
             'password' => 'required|min:6|confirmed',
-        ], [
-            'password.required'  => 'Password is required',
-            'password.min'       => 'Password must be at least 6 characters',
-            'password.confirmed' => 'Passwords do not match',
         ]);
 
         $key = 'reset_user_' . $request->verification_id;
+        $codeKey = $key . '_code';
         $attemptsKey = $key . '_attempts';
 
         $userId = Cache::get($key);
+        $cachedCode = Cache::get($codeKey);
 
-        if (!$userId) {
+        if (!$userId || !$cachedCode) {
             return response()->json(['message' => 'Confirmation period expired or request not found'], 422);
         }
 
         $user = User::find($userId);
         if (!$user) {
             Cache::forget($key);
+            Cache::forget($codeKey);
             Cache::forget($attemptsKey);
             return response()->json(['message' => 'User not found'], 422);
         }
 
-        // Проверка тестового текста
-        if ($request->message !== 'Bu Eskiz dan test') {
+        if ((string) $request->code !== (string) $cachedCode) {
             $attempts = Cache::increment($attemptsKey);
 
             if ($attempts >= 3) {
                 Cache::forget($key);
+                Cache::forget($codeKey);
                 Cache::forget($attemptsKey);
                 return response()->json(['message' => 'Maximum attempts exceeded. Please try again'], 422);
             }
@@ -125,11 +123,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid confirmation code. Please try again'], 422);
         }
 
-        // Всё ок → обновляем пароль
         $user->password = Hash::make($request->password);
         $user->save();
 
         Cache::forget($key);
+        Cache::forget($codeKey);
         Cache::forget($attemptsKey);
 
         return response()->json([
