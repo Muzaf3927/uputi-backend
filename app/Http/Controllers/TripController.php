@@ -64,14 +64,14 @@ class TripController extends Controller
             // confirmed пассажиры
             $confirmed = $trip->bookings()
                 ->where('status', 'confirmed')
-                ->with('user:id,name')
+                ->with('user:id,name,phone,rating')
                 ->get()
                 ->pluck('user');
 
             // pending пассажиры
             $pending = $trip->bookings()
                 ->where('status', 'pending')
-                ->with('user:id,name')
+                ->with('user:id,name,phone,rating')
                 ->get()
                 ->pluck('user');
 
