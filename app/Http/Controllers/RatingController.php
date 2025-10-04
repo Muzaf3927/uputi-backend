@@ -26,9 +26,9 @@ class RatingController extends Controller
 //        }
 
         // Trip must be completed
-        if ($trip->status !== 'completed') {
-            return response()->json(['message' => 'You can rate only after trip completion.'], 422);
-        }
+//        if ($trip->status !== 'completed') {
+//            return response()->json(['message' => 'You can rate only after trip completion.'], 422);
+//        }
 
         // Check participation and direction (driver -> passenger or passenger -> driver)
         $fromIsDriver = $trip->user_id === $fromUser->id;
