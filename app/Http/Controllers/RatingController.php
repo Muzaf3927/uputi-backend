@@ -21,9 +21,9 @@ class RatingController extends Controller
 
         $fromUser = Auth::user();
 
-        if ($fromUser->id === $toUser->id) {
-            return response()->json(['message' => 'You cannot rate yourself.'], 422);
-        }
+//        if ($fromUser->id === $toUser->id) {
+//            return response()->json(['message' => 'You cannot rate yourself.'], 422);
+//        }
 
         // Trip must be completed
         if ($trip->status !== 'completed') {
