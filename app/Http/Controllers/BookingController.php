@@ -111,9 +111,7 @@ class BookingController extends Controller
                         'trip_id' => $trip->id,
                         'sender_id' => $trip->user_id, // voditel
                         'receiver_id' => $booking->user_id, // passazhir
-                        'message' => "Privet! Ya podtverdil vashu zayavku na poezdku {$trip->from_city} → {$trip->to_city}. " .
-                            "Vy predlozhili: {$booking->offered_price} sum. " .
-                            ($booking->comment ? "Kommentariy: {$booking->comment}" : ""),
+                        'message' => "Privet! Ya podtverdil vashu zayavku na poezdku {$trip->from_city} → {$trip->to_city}"
                     ]);
 
                     // sozdanie uvedomleniya dlya passazhira
