@@ -116,6 +116,7 @@ class TripController extends Controller
                 'date' => $trip->date,
                 'time' => $trip->time,
                 'price' => $trip->price,
+                'status' => $trip->status,
                 'seats_total' => $trip->seats,
                 'confirmed_seats' => $confirmedSeats,
                 'pending_seats' => $pendingSeats,
