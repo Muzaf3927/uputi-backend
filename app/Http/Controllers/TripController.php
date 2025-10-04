@@ -205,85 +205,85 @@ class TripController extends Controller
         ]);
     }
 
-    public function myCompletedTrips()
-    {
-        $trips = Trip::where('user_id', Auth::id())
-            ->where('status', 'completed')
-            ->with(['bookings' => function ($q) {
-                $q->where('status', 'confirmed')->with('passenger:id,name');
-            }])
-            ->orderByDesc('date')
-            ->orderByDesc('time')
-            ->paginate(5); // <<< пагинация
+        public function myCompletedTrips()
+        {
+            $trips = Trip::where('user_id', Auth::id())
+                ->where('status', 'completed')
+                ->with(['bookings' => function ($q) {
+                    $q->where('status', 'confirmed')->with('passenger:id,name');
+                }])
+                ->orderByDesc('date')
+                ->orderByDesc('time')
+                ->paginate(5); // <<< пагинация
 
-        // Преобразуем каждую страницу
-        $trips->getCollection()->transform(function ($trip) {
-            $participants = $trip->bookings->map(function ($b) use ($trip) {
+            // Преобразуем каждую страницу
+            $trips->getCollection()->transform(function ($trip) {
+                $participants = $trip->bookings->map(function ($b) use ($trip) {
+                    $alreadyRated = Rating::where('from_user_id', Auth::id())
+                        ->where('to_user_id', $b->user_id)
+                        ->where('trip_id', $trip->id)
+                        ->exists();
+
+                    return [
+                        'user' => [
+                            'id' => $b->passenger?->id,
+                            'name' => $b->passenger?->name,
+                        ],
+                        'can_rate' => !$alreadyRated,
+                    ];
+                });
+
+                return [
+                    'id' => $trip->id,
+                    'from_city' => $trip->from_city,
+                    'to_city' => $trip->to_city,
+                    'date' => $trip->date,
+                    'time' => $trip->time,
+                    'price' => $trip->price,
+                    'participants' => $participants,
+                    'role' => 'driver'
+                ];
+            });
+
+            return response()->json($trips);
+        }
+
+        public function myCompletedTripsAsPassenger()
+        {
+            $trips = Trip::where('status', 'completed')
+                ->whereHas('bookings', function ($q) {
+                    $q->where('user_id', Auth::id())
+                        ->where('status', 'confirmed');
+                })
+                ->with(['driver:id,name'])
+                ->orderByDesc('date')
+                ->orderByDesc('time')
+                ->paginate(5); // <<< пагинация
+
+            $trips->getCollection()->transform(function ($trip) {
                 $alreadyRated = Rating::where('from_user_id', Auth::id())
-                    ->where('to_user_id', $b->user_id)
+                    ->where('to_user_id', $trip->user_id)
                     ->where('trip_id', $trip->id)
                     ->exists();
 
                 return [
-                    'user' => [
-                        'id' => $b->passenger?->id,
-                        'name' => $b->passenger?->name,
+                    'id' => $trip->id,
+                    'from_city' => $trip->from_city,
+                    'to_city' => $trip->to_city,
+                    'date' => $trip->date,
+                    'time' => $trip->time,
+                    'price' => $trip->price,
+                    'driver' => [
+                        'id' => $trip->driver?->id,
+                        'name' => $trip->driver?->name,
                     ],
                     'can_rate' => !$alreadyRated,
+                    'role' => 'passenger'
                 ];
             });
 
-            return [
-                'id' => $trip->id,
-                'from_city' => $trip->from_city,
-                'to_city' => $trip->to_city,
-                'date' => $trip->date,
-                'time' => $trip->time,
-                'price' => $trip->price,
-                'participants' => $participants,
-                'role' => 'driver'
-            ];
-        });
-
-        return response()->json($trips);
-    }
-
-    public function myCompletedTripsAsPassenger()
-    {
-        $trips = Trip::where('status', 'completed')
-            ->whereHas('bookings', function ($q) {
-                $q->where('user_id', Auth::id())
-                    ->where('status', 'confirmed');
-            })
-            ->with(['driver:id,name'])
-            ->orderByDesc('date')
-            ->orderByDesc('time')
-            ->paginate(5); // <<< пагинация
-
-        $trips->getCollection()->transform(function ($trip) {
-            $alreadyRated = Rating::where('from_user_id', Auth::id())
-                ->where('to_user_id', $trip->user_id)
-                ->where('trip_id', $trip->id)
-                ->exists();
-
-            return [
-                'id' => $trip->id,
-                'from_city' => $trip->from_city,
-                'to_city' => $trip->to_city,
-                'date' => $trip->date,
-                'time' => $trip->time,
-                'price' => $trip->price,
-                'driver' => [
-                    'id' => $trip->driver?->id,
-                    'name' => $trip->driver?->name,
-                ],
-                'can_rate' => !$alreadyRated,
-                'role' => 'passenger'
-            ];
-        });
-
-        return response()->json($trips);
-    }
+            return response()->json($trips);
+        }
     /**
      * Получить сообщение о статусе заявки
      */
