@@ -50,35 +50,95 @@ class TripController extends Controller
         ]);
     }
 
+//    public function myTrips(Request $request)
+//    {
+//        // Кол-во записей на страницу (по умолчанию 5)
+//        $perPage = $request->get('per_page', 5);
+//
+//        $trips = Trip::where('user_id', Auth::id())
+//            ->orderByDesc('date')
+//            ->paginate($perPage);
+//
+//        // Добавляем пассажиров к каждой поездке
+//        $trips->getCollection()->transform(function ($trip) {
+//            // confirmed пассажиры
+//            $confirmed = $trip->bookings()
+//                ->where('status', 'confirmed')
+//                ->with('user:id,name,phone,rating')
+//                ->get()
+//                ->pluck('user');
+//
+//            // pending пассажиры
+//            $pending = $trip->bookings()
+//                ->where('status', 'pending')
+//                ->with('user:id,name,phone,rating')
+//                ->get()
+//                ->pluck('user');
+//
+//            $trip->confirmed_passengers = $confirmed;
+//            $trip->pending_passengers = $pending;
+//
+//            return $trip;
+//        });
+//
+//        return response()->json($trips);
+//    }
     public function myTrips(Request $request)
     {
-        // Кол-во записей на страницу (по умолчанию 5)
         $perPage = $request->get('per_page', 5);
 
         $trips = Trip::where('user_id', Auth::id())
             ->orderByDesc('date')
             ->paginate($perPage);
 
-        // Добавляем пассажиров к каждой поездке
         $trips->getCollection()->transform(function ($trip) {
-            // confirmed пассажиры
-            $confirmed = $trip->bookings()
+            // confirmed
+            $confirmedBookings = $trip->bookings()
                 ->where('status', 'confirmed')
                 ->with('user:id,name,phone,rating')
-                ->get()
-                ->pluck('user');
+                ->get();
 
-            // pending пассажиры
-            $pending = $trip->bookings()
+            $confirmedSeats = $confirmedBookings->sum('seats');
+
+            // pending
+            $pendingBookings = $trip->bookings()
                 ->where('status', 'pending')
                 ->with('user:id,name,phone,rating')
-                ->get()
-                ->pluck('user');
+                ->get();
 
-            $trip->confirmed_passengers = $confirmed;
-            $trip->pending_passengers = $pending;
+            $pendingSeats = $pendingBookings->sum('seats');
 
-            return $trip;
+            // Добавляем в результат
+            return [
+                'id' => $trip->id,
+                'from_city' => $trip->from_city,
+                'to_city' => $trip->to_city,
+                'date' => $trip->date,
+                'time' => $trip->time,
+                'price' => $trip->price,
+                'seats_total' => $trip->seats,
+                'confirmed_seats' => $confirmedSeats,
+                'pending_seats' => $pendingSeats,
+                'available_seats' => $trip->seats - $confirmedSeats,
+                'confirmed_passengers' => $confirmedBookings->map(function ($b) {
+                    return [
+                        'id' => $b->user->id,
+                        'name' => $b->user->name,
+                        'phone' => $b->user->phone,
+                        'rating' => $b->user->rating,
+                        'seats' => $b->seats, // <-- сколько он забронировал
+                    ];
+                }),
+                'pending_passengers' => $pendingBookings->map(function ($b) {
+                    return [
+                        'id' => $b->user->id,
+                        'name' => $b->user->name,
+                        'phone' => $b->user->phone,
+                        'rating' => $b->user->rating,
+                        'seats' => $b->seats, // <-- сколько он запросил
+                    ];
+                }),
+            ];
         });
 
         return response()->json($trips);
