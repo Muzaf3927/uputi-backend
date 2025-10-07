@@ -85,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
     //Profile
     Route::get('/users/me', [UserController::class, 'me']);
     Route::get('/users/{user}', [UserController::class, 'user']);
+    Route::delete('/user/delete-account', [UserController::class, 'deleteAccount']); //удалить аккаунт
 
     //Выйти
     Route::post('/logout', [AuthController::class, 'logout']); //выход

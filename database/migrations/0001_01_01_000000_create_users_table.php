@@ -24,6 +24,7 @@ return new class extends Migration
             $table->boolean('is_verified')->default(false);
             $table->string('verification_code')->nullable();
             $table->string('telegram_chat_id')->nullable();
+            $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
         });
     }

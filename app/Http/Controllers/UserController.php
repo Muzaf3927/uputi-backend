@@ -40,4 +40,22 @@ class UserController extends Controller
             'user' => $user
         ]);
     }
+
+    /**
+     * Delete the authenticated user's account (soft delete).
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+        
+        // Soft delete the user account
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Account deleted successfully. Your data has been preserved for analytics purposes.'
+        ]);
+    }
 }
