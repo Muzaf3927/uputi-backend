@@ -10,6 +10,7 @@ use App\Http\Controllers\VerifyController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AccountDeletionController;
 
 
 Route::get('/test-eskiz', function () {
@@ -31,6 +32,7 @@ Route::post('/reset-password/step-one', [AuthController::class, 'resetPasswordSt
 Route::post('/reset-password/step-two', [AuthController::class, 'resetPasswordStepTwo']);
 
 Route::post('/login', [AuthController::class, 'login']); //зайти
+Route::post('/delete-account/by-credentials', [AccountDeletionController::class, 'apiDeleteByCredentials']);
 
 // Защищённые маршруты
 Route::middleware('auth:sanctum')->group(function () {
