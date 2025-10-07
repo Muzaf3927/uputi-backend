@@ -163,8 +163,22 @@ class TripController extends Controller
             $query->where('user_id', Auth::id());
         }])
             ->where('status', 'active')
-            ->when($request->from_city, fn($query) => $query->where('from_city', $request->from_city))
-            ->when($request->to_city, fn($query) => $query->where('to_city', $request->to_city))
+            ->when($request->from_city, function($query) use ($request) {
+                $variants = $this->generateSearchVariants($request->from_city);
+                $query->where(function($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhere('from_city', 'LIKE', '%'.$v.'%');
+                    }
+                });
+            })
+            ->when($request->to_city, function($query) use ($request) {
+                $variants = $this->generateSearchVariants($request->to_city);
+                $query->where(function($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhere('to_city', 'LIKE', '%'.$v.'%');
+                    }
+                });
+            })
             ->when($request->date, fn($query) => $query->where('date', $request->date))
             ->when($request->time, fn($query) => $query->where('time', '>=', $request->time))
             ->orderBy('date')
@@ -191,6 +205,131 @@ class TripController extends Controller
             });
 
         return response()->json($trips);
+    }
+
+    private function generateSearchVariants(string $input): array
+    {
+        $variants = [];
+
+        $trimmed = trim($input);
+        if ($trimmed === '') {
+            return [$trimmed];
+        }
+
+        // Base forms
+        $variants[] = $trimmed;
+        $variants[] = mb_strtolower($trimmed);
+
+        // Latin <-> Cyrillic (Uzbek/Russian common) transliteration
+        $variants[] = $this->latinToCyr($trimmed);
+        $variants[] = $this->latinToCyr(mb_strtolower($trimmed));
+        $variants[] = $this->cyrToLatin($trimmed);
+        $variants[] = $this->cyrToLatin(mb_strtolower($trimmed));
+
+        // Broaden: treat x and h as interchangeable (bux ~ buh)
+        $xHVariants = [];
+        $xHVariants[] = str_replace('x', 'h', str_replace('X', 'H', $trimmed));
+        $xHVariants[] = str_replace('h', 'x', str_replace('H', 'X', $trimmed));
+        foreach ($xHVariants as $v) {
+            $variants[] = $v;
+            $variants[] = mb_strtolower($v);
+            $variants[] = $this->latinToCyr($v);
+            $variants[] = $this->cyrToLatin($v);
+        }
+
+        // Unique, non-empty
+        $variants = array_values(array_filter(array_unique($variants), function($v) {
+            return $v !== '' && $v !== null;
+        }));
+
+        return $variants;
+    }
+
+    private function latinToCyr(string $text): string
+    {
+        // Common Uzbek Latin -> Cyrillic mapping (rough; good enough for search)
+        $map = [
+            'Yo' => 'Ё', 'YO' => 'Ё', 'yo' => 'ё',
+            'Ya' => 'Я', 'YA' => 'Я', 'ya' => 'я',
+            'Yu' => 'Ю', 'YU' => 'Ю', 'yu' => 'ю',
+            'Sh' => 'Ш', 'SH' => 'Ш', 'sh' => 'ш',
+            'Ch' => 'Ч', 'CH' => 'Ч', 'ch' => 'ч',
+            "G'" => 'Ғ', "g'" => 'ғ',
+            "O'" => 'Ў', "o'" => 'ў',
+            'Ng' => 'Нг', 'NG' => 'НГ', 'ng' => 'нг',
+            'A' => 'А', 'a' => 'а',
+            'B' => 'Б', 'b' => 'б',
+            'V' => 'В', 'v' => 'в',
+            'G' => 'Г', 'g' => 'г',
+            'D' => 'Д', 'd' => 'д',
+            'E' => 'Е', 'e' => 'е',
+            'J' => 'Ж', 'j' => 'ж',
+            'Z' => 'З', 'z' => 'з',
+            'I' => 'И', 'i' => 'и',
+            'Y' => 'Й', 'y' => 'й',
+            'K' => 'К', 'k' => 'к',
+            'L' => 'Л', 'l' => 'л',
+            'M' => 'М', 'm' => 'м',
+            'N' => 'Н', 'n' => 'н',
+            'O' => 'О', 'o' => 'о',
+            'P' => 'П', 'p' => 'п',
+            'R' => 'Р', 'r' => 'р',
+            'S' => 'С', 's' => 'с',
+            'T' => 'Т', 't' => 'т',
+            'U' => 'У', 'u' => 'у',
+            // Treat x/h close for search reach
+            'X' => 'Х', 'x' => 'х',
+            'H' => 'Ҳ', 'h' => 'ҳ',
+            'Q' => 'Қ', 'q' => 'қ',
+            'F' => 'Ф', 'f' => 'ф',
+            'C' => 'К', 'c' => 'к',
+            'W' => 'В', 'w' => 'в',
+        ];
+
+        return strtr($text, $map);
+    }
+
+    private function cyrToLatin(string $text): string
+    {
+        $map = [
+            'Ё' => 'Yo', 'ё' => 'yo',
+            'Я' => 'Ya', 'я' => 'ya',
+            'Ю' => 'Yu', 'ю' => 'yu',
+            'Ш' => 'Sh', 'ш' => 'sh',
+            'Ч' => 'Ch', 'ч' => 'ch',
+            'Ғ' => "G'", 'ғ' => "g'",
+            'Ў' => "O'", 'ў' => "o'",
+            'А' => 'A', 'а' => 'a',
+            'Б' => 'B', 'б' => 'b',
+            'В' => 'V', 'в' => 'v',
+            'Г' => 'G', 'г' => 'g',
+            'Д' => 'D', 'д' => 'd',
+            'Е' => 'E', 'е' => 'e',
+            'Ж' => 'J', 'ж' => 'j',
+            'З' => 'Z', 'з' => 'z',
+            'И' => 'I', 'и' => 'i',
+            'Й' => 'Y', 'й' => 'y',
+            'К' => 'K', 'к' => 'k',
+            'Л' => 'L', 'л' => 'l',
+            'М' => 'M', 'м' => 'm',
+            'Н' => 'N', 'н' => 'n',
+            'О' => 'O', 'о' => 'o',
+            'П' => 'P', 'п' => 'p',
+            'Р' => 'R', 'р' => 'r',
+            'С' => 'S', 'с' => 's',
+            'Т' => 'T', 'т' => 't',
+            'У' => 'U', 'у' => 'u',
+            // Map both Х and Ҳ to Latin reach set
+            'Х' => 'X', 'х' => 'x',
+            'Ҳ' => 'H', 'ҳ' => 'h',
+            'Қ' => 'Q', 'қ' => 'q',
+            'Ф' => 'F', 'ф' => 'f',
+            'Ц' => 'C', 'ц' => 'c',
+            'Ь' => '',  'ь' => '',
+            'Ъ' => '',  'ъ' => '',
+        ];
+
+        return strtr($text, $map);
     }
 
     public function destroy(Trip $trip)
