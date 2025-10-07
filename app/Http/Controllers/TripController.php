@@ -167,7 +167,7 @@ class TripController extends Controller
                 $variants = $this->generateSearchVariants($request->from_city);
                 $query->where(function($q) use ($variants) {
                     foreach ($variants as $v) {
-                        $q->orWhere('from_city', 'LIKE', '%'.$v.'%');
+                        $q->orWhereRaw('LOWER(from_city) LIKE ?', ['%'.mb_strtolower($v).'%']);
                     }
                 });
             })
@@ -175,7 +175,7 @@ class TripController extends Controller
                 $variants = $this->generateSearchVariants($request->to_city);
                 $query->where(function($q) use ($variants) {
                     foreach ($variants as $v) {
-                        $q->orWhere('to_city', 'LIKE', '%'.$v.'%');
+                        $q->orWhereRaw('LOWER(to_city) LIKE ?', ['%'.mb_strtolower($v).'%']);
                     }
                 });
             })
