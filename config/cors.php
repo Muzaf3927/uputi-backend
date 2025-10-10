@@ -8,6 +8,8 @@ return [
 
     'allowed_origins' => [
         'https://ride-share-pro.netlify.app', // ← Netlify фронт
+        'https://uputi.net',                  // новый основной домен
+        'https://www.uputi.net',
     ],
 
     'allowed_origins_patterns' => [
