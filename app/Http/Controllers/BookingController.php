@@ -111,7 +111,7 @@ class BookingController extends Controller
                         'trip_id' => $trip->id,
                         'sender_id' => $trip->user_id, // voditel
                         'receiver_id' => $booking->user_id, // passazhir
-                        'message' => "Privet! Ya podtverdil vashu zayavku na poezdku {$trip->from_city} → {$trip->to_city}"
+                        'message' => "Salom, man sizning $trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} so'rovingizni qabul qildim"
                     ]);
 
                     // sozdanie uvedomleniya dlya passazhira
@@ -119,7 +119,7 @@ class BookingController extends Controller
                         'user_id' => $booking->user_id,
                         'sender_id' => $trip->user_id,
                         'type' => 'booking_confirmed',
-                        'message' => "Vasha zayavka na poezdku {$trip->from_city} → {$trip->to_city} prinyata!",
+                        'message' => "So'rovingiz $trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} qabul qilindi!",
                         'data' => json_encode([
                             'trip_id' => $trip->id,
                             'booking_id' => $booking->id,
@@ -144,7 +144,7 @@ class BookingController extends Controller
                     'user_id' => $booking->user_id,
                     'sender_id' => $trip->user_id,
                     'type' => 'booking_cancelled',
-                    'message' => "Vash zapros na poezdku {$trip->from_city} → {$trip->to_city} bil otmenen voditelem.",
+                    'message' => "So'rovingiz $trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} haydovchi tomonidan rad etildi",
                     'data' => json_encode([
                         'trip_id' => $trip->id,
                         'booking_id' => $booking->id
@@ -190,7 +190,7 @@ class BookingController extends Controller
             'user_id' => $trip->user_id, // voditel
             'sender_id' => Auth::id(),
             'type' => 'booking_cancelled_by_passenger',
-            'message' => "{$passengerName} otmenil zayavku na poezdku {$trip->from_city} → {$trip->to_city}",
+            'message' => "{$passengerName} $trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} bo'yicha surovini bekor qildi",
             'data' => json_encode([
                 'trip_id' => $trip->id,
                 'booking_id' => $booking->id,
