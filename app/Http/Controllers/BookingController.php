@@ -44,10 +44,10 @@ class BookingController extends Controller
                 ]
             );
 
-            $message = Auth::user()->name . "{$trip->from_city} → {$trip->to_city} safariga so'rov junatdi ";
+            $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga so'rov junatdi ";
 
             if ($request->offered_price) {
-                $message = Auth::user()->name . "{$trip->from_city} → {$trip->to_city} safariga {$request->offered_price} sum taklif qilyapti";
+                $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga {$request->offered_price} sum taklif qilyapti";
             }
 
             Notification::create([
