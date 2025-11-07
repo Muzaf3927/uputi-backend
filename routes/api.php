@@ -11,7 +11,7 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AccountDeletionController;
-
+use App\Http\Controllers\DownloadController;
 
 Route::get('/test-eskiz', function () {
     try {
@@ -21,6 +21,9 @@ Route::get('/test-eskiz', function () {
         return $e->getMessage();
     }
 });
+
+
+Route::post('count/download', [DownloadController::class, 'store']);
 
 Route::post('/register', [VerifyController::class, 'registerStepOne'])->middleware('sms.throttle');
 Route::post('/verify', [VerifyController::class, 'verifySmsAndActivate']);
