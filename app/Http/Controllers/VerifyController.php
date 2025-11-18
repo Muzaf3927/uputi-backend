@@ -47,7 +47,7 @@ class VerifyController extends Controller
                 'to' => '998' . $request->phone,
                 'senderId' => '2702',
                 'merchantId' => 'MCHUPUTI',
-                'message' => "Vash kod dla vxoda v prilojenii UPuti: $code",
+                'message' => "Vash kod dlya vxoda v prilojenii UPuti: $code",
                 'messageId' => $verificationId,
             ]);
 
