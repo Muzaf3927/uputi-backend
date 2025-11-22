@@ -15,8 +15,27 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|size:9',
-            'name'  => 'nullable|string|max:255', // имя нужно только при регистрации
+            'name'  => 'required|string|max:30', // имя нужно только при регистрации
         ]);
+
+        // ===== DEV LOGIN WITHOUT OTP =====
+        if ($request->phone === '123123123') {
+
+            $user = User::where('phone', '123123123')->first();
+
+            // удаляем старые токены
+            $user->tokens()->delete();
+
+            // создаём новый токен
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Dev login (no OTP)',
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => $user,
+            ]);
+        }
 
         $phone = $request->phone;
 

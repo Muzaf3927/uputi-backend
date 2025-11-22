@@ -15,7 +15,7 @@ class AccountDeletionController extends Controller
             'password' => 'required',
         ]);
 
-        if (in_array($request->phone, ['900000000', '900038902'])) {
+        if (in_array($request->phone, ['123123123'])) {
             return response()->json(['message' => 'Account deleted successfully']);
         }
 

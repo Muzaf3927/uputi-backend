@@ -14,10 +14,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::create([
-            'name' => 'Test User',
-            'phone' => '900000000',
+            'name' => 'User',
+            'phone' => '123123123',
             'role' => 'driver',
-            'password' => Hash::make('900000000'),
+            'password' => null,
             'balance' => 10000,
             'rating' => 5.0,
             'rating_count' => 25,
