@@ -26,16 +26,9 @@ Route::get('/test-eskiz', function () {
 Route::post('/telegram/webhook', [TelegramController::class, 'webhook']);
 Route::post('count/download', [DownloadController::class, 'store']);
 
-Route::post('/register', [VerifyController::class, 'registerStepOne'])->middleware('sms.throttle');
-Route::post('/verify', [VerifyController::class, 'verifySmsAndActivate']);
+Route::post('/auth/start', [AuthController::class, 'start'])->middleware('sms.throttle');
+Route::post('/auth/verify', [AuthController::class, 'verify']);
 
-// Шаг 1: отправка SMS
-Route::post('/reset-password/step-one', [AuthController::class, 'resetPasswordStepOne'])->middleware('sms.throttle');
-
-// Шаг 2: подтверждение кода и смена пароля
-Route::post('/reset-password/step-two', [AuthController::class, 'resetPasswordStepTwo']);
-
-Route::post('/login', [AuthController::class, 'login']); //зайти
 Route::post('/delete-account/by-credentials', [AccountDeletionController::class, 'apiDeleteByCredentials']);
 
 // Защищённые маршруты

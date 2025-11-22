@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('phone')->unique();
             $table->string('role')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable();
             $table->integer('balance')->default(0);
             $table->decimal('rating', 2, 1)->default(5.0);
             $table->unsignedInteger('rating_count')->default(0);
