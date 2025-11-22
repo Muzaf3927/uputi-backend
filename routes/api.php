@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\VerifyController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
@@ -29,7 +28,9 @@ Route::post('count/download', [DownloadController::class, 'store']);
 Route::post('/auth/start', [AuthController::class, 'start'])->middleware('sms.throttle');
 Route::post('/auth/verify', [AuthController::class, 'verify']);
 
-Route::post('/delete-account/by-credentials', [AccountDeletionController::class, 'apiDeleteByCredentials']);
+//удаление отделный
+Route::post('/account/delete/send-otp', [AccountDeletionController::class, 'sendOtp']);
+Route::post('/account/delete/verify', [AccountDeletionController::class, 'verifyAndDelete']);
 
 // Защищённые маршруты
 Route::middleware('auth:sanctum')->group(function () {

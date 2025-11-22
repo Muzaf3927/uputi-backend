@@ -51,7 +51,7 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        if (in_array($user->phone, ['900000000', '900038902'])) {
+        if (in_array($user->phone, ['123123123'])) {
             return response()->json([
                 'message' => 'Account deleted successfully. Your data has been preserved for analytics purposes..'
             ]);
