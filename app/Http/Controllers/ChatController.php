@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Jobs\SendTelegramNotificationJob;
 use Illuminate\Http\Request;
 
 use App\Models\ChatMessage;
@@ -32,12 +33,28 @@ class ChatController extends Controller
             'user_id' => $request->receiver_id,
             'sender_id' => Auth::id(),
             'type' => 'chat',
-            'message' => "Chatlar bo'limida yangi xabar ' . $trip->from_city . ' → ' . $trip->to_city",
+            'message' => "Chatlar bo'limida yangi xabar: {$trip->from_city} → {$trip->to_city}",
             'data' => json_encode([
                 'trip_id' => $trip->id,
                 'chat_message_id' => $message->id
             ]),
         ]);
+
+        // === Telegram уведомление о новом чате ===
+        $receiver = User::find($request->receiver_id);
+
+        if ($receiver && $receiver->telegram_chat_id) {
+            $text = "💬 Yangi xabar!\n"
+                . "{$trip->from_city} → {$trip->to_city}\n\n"
+                . "Matn: {$request->message}";
+
+            dispatch(new SendTelegramNotificationJob(
+                $receiver->telegram_chat_id,
+                $text
+            ));
+        }
+
+
 
         return response()->json([
             'status' => 'success',

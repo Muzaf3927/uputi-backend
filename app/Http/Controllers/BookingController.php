@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\ChatMessage;
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -63,6 +65,16 @@ class BookingController extends Controller
                     'comment'       => $booking->comment,
                 ]),
             ]);
+
+            // === Telegram уведомление ===
+            $user = User::find($trip->user_id);
+
+            if ($user && $user->telegram_chat_id) {
+                dispatch(new SendTelegramNotificationJob(
+                    $user->telegram_chat_id,
+                    $message
+                ));
+            }
 
             return response()->json([
                 'message' => 'Booking request sent',
@@ -126,6 +138,19 @@ class BookingController extends Controller
                             'chat_message_id' => $welcomeMessage->id
                         ]),
                     ]);
+                    // === Telegram уведомление о подтверждении ===
+                    $passenger = User::find($booking->user_id);
+
+                    if ($passenger && $passenger->telegram_chat_id) {
+                        $text = "✅ Haydovchi sizning safar so'rovingizni qabul qildi!\n"
+                            . "{$trip->from_city} → {$trip->to_city}\n"
+                            . "{$trip->data}, {$trip->time}";
+
+                        dispatch(new SendTelegramNotificationJob(
+                            $passenger->telegram_chat_id,
+                            $text
+                        ));
+                    }
 
                 } else {
                     return response()->json([
@@ -150,6 +175,20 @@ class BookingController extends Controller
                         'booking_id' => $booking->id
                     ]),
                 ]);
+                // === Telegram уведомление об отмене ===
+                $passenger = User::find($booking->user_id);
+
+                if ($passenger && $passenger->telegram_chat_id) {
+                    $text = "❌ Haydovchi sizning safar so'rovingizni rad etdi.\n"
+                        . "{$trip->from_city} → {$trip->to_city}\n"
+                        . "{$trip->data}, {$trip->time}";
+
+                    dispatch(new SendTelegramNotificationJob(
+                        $passenger->telegram_chat_id,
+                        $text
+                    ));
+                }
+
             }
         }
 
@@ -197,6 +236,22 @@ class BookingController extends Controller
                 'old_status' => $oldStatus
             ]),
         ]);
+
+        // === Telegram уведомление водителю ===
+        $driver = User::find($trip->user_id);
+
+        if ($driver && $driver->telegram_chat_id) {
+            $text = "❗ Yo‘lovchi o‘z so‘rovini bekor qildi.\n"
+                . "{$trip->from_city} → {$trip->to_city}\n"
+                . "{$trip->data}, {$trip->time}\n"
+                . "Yo‘lovchi: {$passengerName}";
+
+            dispatch(new SendTelegramNotificationJob(
+                $driver->telegram_chat_id,
+                $text
+            ));
+        }
+
 
         // Удаляем бронь вместо смены статуса
         $booking->delete();

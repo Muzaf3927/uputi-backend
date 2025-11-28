@@ -28,7 +28,6 @@ Route::post('/auth/verify', [AuthController::class, 'verify']);
 Route::post('/account/delete/send-otp', [AccountDeletionController::class, 'sendOtp']);
 Route::post('/account/delete/verify', [AccountDeletionController::class, 'verifyAndDelete']);
 
-Route::get('/telegram/connect', [TelegramConnectController::class, 'connect']);
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
 
