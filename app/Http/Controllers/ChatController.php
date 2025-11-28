@@ -44,7 +44,7 @@ class ChatController extends Controller
         $receiver = User::find($request->receiver_id);
 
         if ($receiver && $receiver->telegram_chat_id) {
-            $text = "💬 Yangi xabar!\n"
+            $text = "💬 Yangi xabar! Chatlar bo'limidan javob yozishingiz mumkin\n"
                 . "{$trip->from_city} → {$trip->to_city}\n\n"
                 . "Matn: {$request->message}";
 

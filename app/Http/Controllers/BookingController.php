@@ -46,10 +46,10 @@ class BookingController extends Controller
                 ]
             );
 
-            $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga so'rov junatdi ";
+            $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga so'rov junatdi. So'rovlar bo'limidan qabul qiling yoki rad eting ";
 
             if ($request->offered_price) {
-                $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga {$request->offered_price} sum taklif qilyapti";
+                $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga {$request->offered_price} so'm taklif qilyapti. So'rovlar bo'limidan qabul qiling yoki rad eting";
             }
 
             Notification::create([
@@ -131,7 +131,7 @@ class BookingController extends Controller
                         'user_id' => $booking->user_id,
                         'sender_id' => $trip->user_id,
                         'type' => 'booking_confirmed',
-                        'message' => "So'rovingiz {$trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} qabul qilindi!",
+                        'message' => "So'rovingiz {$trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} qabul qilindi. Bronlar yoki Chatlar bo'limidan haydovchi bilan boglanishingiz mumkin!",
                         'data' => json_encode([
                             'trip_id' => $trip->id,
                             'booking_id' => $booking->id,
@@ -142,7 +142,7 @@ class BookingController extends Controller
                     $passenger = User::find($booking->user_id);
 
                     if ($passenger && $passenger->telegram_chat_id) {
-                        $text = "✅ Haydovchi sizning safar so'rovingizni qabul qildi!\n"
+                        $text = "✅ Haydovchi sizning safar so'rovingizni qabul qildi! Bronlar yoki Chatlar bolimidan haydovchi bilan boglanishingiz mumkin\n"
                             . "{$trip->from_city} → {$trip->to_city}\n"
                             . "{$trip->data}, {$trip->time}";
 
