@@ -11,18 +11,14 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\DownloadController;
-use App\Http\Controllers\TelegramController;
+use App\Http\Controllers\TelegramConnectController;
+use App\Http\Controllers\TelegramWebhookController;
 
-Route::get('/test-eskiz', function () {
-    try {
-        $response = \Illuminate\Support\Facades\Http::timeout(10)->get('https://notify.eskiz.uz/api/auth/login');
-        return $response->body();
-    } catch (\Exception $e) {
-        return $e->getMessage();
-    }
+Route::get('/test', function () {
+    return 'test';
 });
 
-Route::post('/telegram/webhook', [TelegramController::class, 'webhook']);
+
 Route::post('count/download', [DownloadController::class, 'store']);
 
 Route::post('/auth/start', [AuthController::class, 'start'])->middleware('sms.throttle');
@@ -32,8 +28,15 @@ Route::post('/auth/verify', [AuthController::class, 'verify']);
 Route::post('/account/delete/send-otp', [AccountDeletionController::class, 'sendOtp']);
 Route::post('/account/delete/verify', [AccountDeletionController::class, 'verifyAndDelete']);
 
+Route::get('/telegram/connect', [TelegramConnectController::class, 'connect']);
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
+
+
 // Защищённые маршруты
 Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/telegram/connect', [TelegramConnectController::class, 'connect']);
+
     Route::get('/user', [UserController::class, 'me']); //Получения данных пользователя
     Route::post('/user', [UserController::class, 'update']);
     //Trips - Поездки
