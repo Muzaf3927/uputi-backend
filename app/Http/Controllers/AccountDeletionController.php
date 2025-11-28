@@ -44,7 +44,7 @@ class AccountDeletionController extends Controller
                 'to' => '998' . $request->phone,
                 'senderId' => '2702',
                 'merchantId' => 'MCHUPUTI',
-                'message' => "Vash kod dlya vxoda v UPuti:: $code",
+                'message' => "Vash kod dlya vxoda v UPuti: $code",
                 'messageId' => $verificationId,
             ]);
 
