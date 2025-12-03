@@ -13,6 +13,8 @@ use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\TelegramConnectController;
 use App\Http\Controllers\TelegramWebhookController;
+use App\Http\Controllers\PassengerRequestController;
+use App\Http\Controllers\DriverOfferController;
 
 Route::get('/test', function () {
     return 'test';
@@ -48,14 +50,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trips/completed/mine', [TripController::class, 'myCompletedTrips']); // мои завершенные поездки (как водитель)
     Route::get('/trips/completed/as-passenger', [TripController::class, 'myCompletedTripsAsPassenger']); // завершенные поездки, где я пассажир
     //Bookings - Броны
-//    Route::post('/trips/{trip}/booking', [BookingController::class, 'store']); //бронировать
-//    Route::post('/bookings/{booking}', [BookingController::class, 'update']); //бронировать
-//    Route::get('/bookings', [BookingController::class, 'myBookings']); // мои заявки
-//    Route::get('/trips/{trip}/bookings', [BookingController::class, 'tripBookings']); // заявки на мою поездку
-//    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']); // пассажир отменяет
-//    // Pending lists
-//    Route::get('/bookings/pending/mine', [BookingController::class, 'myPendingBookings']); // мои ожидающие подтверждения
-//    Route::get('/bookings/pending/to-my-trips', [BookingController::class, 'pendingBookingsToMyTrips']); // ожидающие ко мне
 
     Route::post('/trips/{trip}/booking', [BookingController::class, 'store']);// zabronirovat poezdku
     Route::post('/bookings/{booking}', [BookingController::class, 'update']);// obnovit status bronirovaniya (naprimer, prinyat ili otklonit)
@@ -83,6 +77,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ratings/{trip}/to/{toUser}', [RatingController::class, 'rateUser']);  //поставить оценку
     Route::get('/ratings/user/{user}', [RatingController::class, 'getUserRatings']);  //отзывы пользователя
     Route::get('/ratings/given', [RatingController::class, 'getMyRatingsGiven']); //мои отзывы
+
+    //Passenger Requests - Запросы пассажиров
+    Route::post('/passenger-requests', [PassengerRequestController::class, 'store']); // создать запрос
+    Route::get('/passenger-requests/my', [PassengerRequestController::class, 'myRequests']); // мои запросы
+    Route::get('/passenger-requests', [PassengerRequestController::class, 'index']); // все запросы
+    Route::post('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'update']); // обновить запрос
+    Route::delete('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'destroy']); // удалить запрос
+    Route::get('/passenger-requests/{passengerRequest}/offers', [PassengerRequestController::class, 'getOffers']); // получить офферы на запрос
+
+    //Driver Offers - Офферы водителей
+    Route::post('/passenger-requests/{passengerRequest}/offer', [DriverOfferController::class, 'store']); // создать оффер на запрос
+    Route::get('/driver-offers/my', [DriverOfferController::class, 'myOffers']); // мои офферы (как водитель)
+    Route::post('/driver-offers/{driverOffer}', [DriverOfferController::class, 'update']); // обновить оффер (изменить статус)
+    Route::post('/driver-offers/{driverOffer}/delete', [DriverOfferController::class, 'delete']); // отменить оффер
 
     //Profile
     Route::get('/users/me', [UserController::class, 'me']);
