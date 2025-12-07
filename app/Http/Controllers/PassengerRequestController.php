@@ -6,6 +6,7 @@ use App\Models\PassengerRequest;
 use App\Models\DriverOffer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\LatinToCyrillic;
 
 class PassengerRequestController extends Controller
 {
@@ -54,7 +55,7 @@ class PassengerRequestController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $requests = PassengerRequest::where('user_id', Auth::id())
-            ->with('driverOffers.driver')
+            ->with('driverOffers.driver', 'passenger:id,name,phone,rating')
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
@@ -67,7 +68,7 @@ class PassengerRequestController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $requests = PassengerRequest::where('status', 'active')
-            ->with('passenger:id,name,phone,rating')
+            ->with('passenger:id,name,phone,rating', 'driverOffers.driver')
             ->where('date', '>=', now()->toDateString())
             ->orderBy('date')
             ->orderBy('time')
@@ -95,7 +96,7 @@ class PassengerRequestController extends Controller
             'amount' => 'nullable|integer|min:0',
             'seats' => 'nullable|integer|min:1',
             'comment' => 'nullable|string|max:500',
-            'status' => 'nullable|in:active,completed,cancelled',
+            'status' => 'nullable|in:active,completed',
         ]);
 
         $passengerRequest->update($validated);
@@ -138,5 +139,69 @@ class PassengerRequestController extends Controller
             'offers' => $offers,
             'offers_count' => $offers->count(), // для отладки
         ]);
+    }
+
+    public function search(Request $request)
+    {
+        $validated = $request->validate([
+            'from_lat' => 'nullable|numeric',
+            'from_lng' => 'nullable|numeric',
+            'from_address' => 'nullable|string|max:255',
+            'to_lat' => 'nullable|numeric',
+            'to_lng' => 'nullable|numeric',
+            'to_address' => 'nullable|string|max:255',
+            'date' => 'nullable|date',
+            'time' => 'nullable',
+        ]);
+
+        $query = PassengerRequest::query();
+
+        // только активные
+        $query->where('status', 'active');
+
+
+        if ($request->filled('from_lat') && $request->filled('from_lng')) {
+
+            $query->where('from_lat', $request->from_lat)
+                ->where('from_lng', $request->from_lng);
+
+        } elseif ($request->filled('from_address')) {
+
+            $search = $request->from_address;
+            $converted = LatinToCyrillic::convert($search);
+
+            $query->where(function ($q) use ($search, $converted) {
+                $q->where('from_address', 'ILIKE', "%{$search}%")
+                    ->orWhere('from_address', 'ILIKE', "%{$converted}%");
+            });
+        }
+
+        if ($request->filled('to_lat') && $request->filled('to_lng')) {
+
+            $query->where('to_lat', $request->to_lat)
+                ->where('to_lng', $request->to_lng);
+
+        } elseif ($request->filled('to_address')) {
+
+            $search = $request->to_address;
+            $converted = LatinToCyrillic::convert($search);
+
+            $query->where(function ($q) use ($search, $converted) {
+                $q->where('to_address', 'ILIKE', "%{$search}%")
+                    ->orWhere('to_address', 'ILIKE', "%{$converted}%");
+            });
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('date', $request->date);
+        }
+
+        if ($request->filled('time')) {
+            $query->where('time', '>=', $request->time);
+        }
+
+        $results = $query->orderBy('date')->orderBy('time')->get();
+
+        return response()->json($results);
     }
 }

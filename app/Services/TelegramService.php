@@ -11,7 +11,7 @@ class TelegramService
     {
         $token = config('services.telegram.bot_token');
 
-        return Http::get("https://api.telegram.org/bot{$token}/sendMessage", [
+        return Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
             'chat_id' => $chatId,
             'text' => $text,
             'parse_mode' => 'HTML'

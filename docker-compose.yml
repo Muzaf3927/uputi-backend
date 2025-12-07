@@ -12,18 +12,17 @@ services:
             - db
 
     db:
-        image: mysql:8.0
+        image: postgres:15
         container_name: blablacar_db
         restart: always
         environment:
-            MYSQL_DATABASE: blablacar
-            MYSQL_USER: blablacar
-            MYSQL_PASSWORD: blablacar
-            MYSQL_ROOT_PASSWORD: root
+            POSTGRES_DB: blablacar
+            POSTGRES_USER: blablacar
+            POSTGRES_PASSWORD: blablacar
         volumes:
-            - db_data:/var/lib/mysql
+            - db_data:/var/lib/postgresql/data
         ports:
-            - 3306:3306
+            - "5432:5432"
 
 volumes:
     db_data:

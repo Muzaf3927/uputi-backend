@@ -13,8 +13,8 @@ class SendTelegramNotificationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $chatId;
-    protected $text;
+    public $chatId;
+    public $text;
 
     public function __construct($chatId, $text)
     {

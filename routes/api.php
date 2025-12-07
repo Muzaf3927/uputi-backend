@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [UserController::class, 'me']); //Получения данных пользователя
     Route::post('/user', [UserController::class, 'update']);
+    Route::post('/role/update', [UserController::class, 'updateRol']);
     //Trips - Поездки
     Route::post('/trip', [TripController::class, 'store']); // создать
     Route::get('/my-trips', [TripController::class, 'myTrips']); //мои поездки
@@ -85,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'update']); // обновить запрос
     Route::delete('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'destroy']); // удалить запрос
     Route::get('/passenger-requests/{passengerRequest}/offers', [PassengerRequestController::class, 'getOffers']); // получить офферы на запрос
+    Route::get('/passenger-requests/search', [PassengerRequestController::class, 'search']);
 
     //Driver Offers - Офферы водителей
     Route::post('/passenger-requests/{passengerRequest}/offer', [DriverOfferController::class, 'store']); // создать оффер на запрос

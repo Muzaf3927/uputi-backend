@@ -41,6 +41,23 @@ class UserController extends Controller
         ]);
     }
 
+    public function updateRol(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'role' => 'required|string|in:passenger,driver',
+        ]);
+
+        $user->role = $validated['role'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'Role updated successfully',
+            'role' => $user->role
+        ], 200);
+    }
+
     /**
      * Delete the authenticated user's account (soft delete).
      *

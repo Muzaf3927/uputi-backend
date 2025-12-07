@@ -68,7 +68,7 @@ class DriverOfferController extends Controller
         $toAddress = $passengerRequest->to_address ?? 'Unknown';
         $priceText = $request->price ? " {$request->price} so'm" : '';
 
-        $message = "{$driver->name} sizning so'rovingizga taklif yubordi{$priceText}. So'rovlar bo'limidan qabul qiling yoki rad eting";
+        $message = "Sizning zakazingizga haydovchi topildi, Zakazlar bo'limidan zakazingiz ustiga bosib qabul qiling";
 
         Notification::create([
             'user_id' => $passengerRequest->user_id,
@@ -103,7 +103,7 @@ class DriverOfferController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $offers = DriverOffer::where('user_id', Auth::id())
-            ->with(['passengerRequest.passenger:id,name,phone,rating'])
+            ->with(['passengerRequest'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
@@ -125,38 +125,30 @@ class DriverOfferController extends Controller
             'status' => 'required|in:accepted,declined',
         ]);
 
-        $oldStatus = $driverOffer->status;
         $newStatus = $validated['status'];
 
-        // Если оффер уже был принят или отклонен, нельзя изменить
-        if ($oldStatus !== 'pending') {
-            return response()->json([
-                'message' => 'Offer status cannot be changed'
-            ], 422);
-        }
-
-        $driverOffer->update(['status' => $newStatus]);
-
-        // Если оффер принят, отклоняем все остальные офферы на этот запрос
+        // Путь А: пассажир ПРИНИМАЕТ оффер
         if ($newStatus === 'accepted') {
-            DriverOffer::where('passenger_request_id', $passengerRequest->id)
-                ->where('id', '!=', $driverOffer->id)
-                ->where('status', 'pending')
-                ->update(['status' => 'declined']);
 
-            // Помечаем запрос как выполненный
-            $passengerRequest->update(['status' => 'completed']);
+            if ($driverOffer->status !== 'pending') {
+                return response()->json(['message' => 'Offer cannot be changed'], 422);
+            }
 
-            // Уведомление водителю о принятии оффера
-            $driver = User::find($driverOffer->user_id);
-            $fromAddress = $passengerRequest->from_address ?? 'Unknown';
-            $toAddress = $passengerRequest->to_address ?? 'Unknown';
+            // Меняем статус принятого
+            $driverOffer->update(['status' => 'accepted']);
 
+//            // Завершаем запрос
+            $passengerRequest->update(['status' => 'in_progress']);
+
+            $from = $passengerRequest->from_address;
+            $to = $passengerRequest->to_address;
+
+            // 1️⃣ Уведомление водителю, чей оффер принят
             Notification::create([
                 'user_id' => $driverOffer->user_id,
                 'sender_id' => $passengerRequest->user_id,
                 'type' => 'offer_accepted',
-                'message' => "Sizning taklifingiz qabul qilindi! {$fromAddress} → {$toAddress}",
+                'message' => "Sizning taklifingiz qabul qilindi! {$from} → {$to}",
                 'data' => json_encode([
                     'passenger_request_id' => $passengerRequest->id,
                     'driver_offer_id' => $driverOffer->id,
@@ -164,9 +156,10 @@ class DriverOfferController extends Controller
             ]);
 
             // Telegram уведомление водителю
+            $driver = User::find($driverOffer->user_id);
             if ($driver && $driver->telegram_chat_id) {
-                $text = "✅ Sizning taklifingiz qabul qilindi!\n"
-                    . "{$fromAddress} → {$toAddress}\n"
+                $text = "✅ Sizning taklifingizni yo'lovchi qabul qildi\n"
+                    . "{$from} → {$to}\n"
                     . "Sana: {$passengerRequest->date}, Vaqt: {$passengerRequest->time}";
 
                 dispatch(new SendTelegramNotificationJob(
@@ -174,27 +167,44 @@ class DriverOfferController extends Controller
                     $text
                 ));
             }
-        } else {
-            // Уведомление водителю об отклонении
-            $driver = User::find($driverOffer->user_id);
-            $fromAddress = $passengerRequest->from_address ?? 'Unknown';
-            $toAddress = $passengerRequest->to_address ?? 'Unknown';
 
-            Notification::create([
-                'user_id' => $driverOffer->user_id,
-                'sender_id' => $passengerRequest->user_id,
-                'type' => 'offer_declined',
-                'message' => "Sizning taklifingiz rad etildi. {$fromAddress} → {$toAddress}",
-                'data' => json_encode([
-                    'passenger_request_id' => $passengerRequest->id,
-                    'driver_offer_id' => $driverOffer->id,
-                ]),
+            // 2️⃣ Всем остальным водителям отправляем уведомление "пассажир выбрал другого"
+            $otherOffers = DriverOffer::where('passenger_request_id', $passengerRequest->id)
+                ->where('id', '!=', $driverOffer->id)
+                ->where('status', 'pending')
+                ->get();
+
+            foreach ($otherOffers as $offer) {
+
+                Notification::create([
+                    'user_id' => $offer->user_id,
+                    'sender_id' => $passengerRequest->user_id,
+                    'type' => 'offer_rejected_by_accepting_another',
+                    'message' => "Kechirasiz, yo'lovchi boshqa haydovchini tanladi. {$from} → {$to}",
+                ]);
+
+                $offer->delete();
+            }
+
+            return response()->json([
+                'message' => 'Offer accepted',
+                'offer' => $driverOffer->load('driver:id,name,phone,rating'),
             ]);
         }
 
+        // Путь Б: пассажир ОТКЛОНЯЕТ этот оффер
+
+        $driverOffer->update(['status' => 'declined']);
+
+        Notification::create([
+            'user_id' => $driverOffer->user_id,
+            'sender_id' => $passengerRequest->user_id,
+            'type' => 'offer_declined',
+            'message' => "Sizning taklifingiz rad etildi.",
+        ]);
+
         return response()->json([
-            'message' => 'Offer status updated',
-            'offer' => $driverOffer->load('driver:id,name,phone,rating'),
+            'message' => 'Offer declined',
         ]);
     }
 
