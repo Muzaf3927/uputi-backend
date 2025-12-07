@@ -10,6 +10,7 @@ return [
         'https://ride-share-pro.netlify.app', // ← Netlify фронт
         'https://uputi.net',                  // новый основной домен
         'https://www.uputi.net',
+        'https://uputimaster.vercel.app', //master dev
     ],
 
     'allowed_origins_patterns' => [
