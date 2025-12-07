@@ -11,7 +11,7 @@ class SmsThrottle
     {
         $phone = $request->input('phone');
         $ip    = $request->ip();
-        if($phone == 123123123 || $phone == 123123122 || $phone == 123123121){
+        if($phone == 123123123 || $phone == 910018902){
             return $next($request);
         }
 

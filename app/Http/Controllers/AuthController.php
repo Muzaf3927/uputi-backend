@@ -19,9 +19,9 @@ class AuthController extends Controller
         ]);
 
         // ===== DEV LOGIN WITHOUT OTP =====
-        if ($request->phone === '123123123') {
+        if ($request->phone === '123123123' || $request->phone === '910018902') {
 
-            $user = User::where('phone', '123123123')->first();
+            $user = User::where('phone', $request->phone)->first();
 
             // удаляем старые токены
             $user->tokens()->delete();
