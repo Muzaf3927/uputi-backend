@@ -13,18 +13,25 @@ return new class extends Migration
     {
         Schema::create('trips', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // водитель
-            $table->string('from_city');
-            $table->string('to_city');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // пассажир
+            // Начальная точка - координаты или название адреса
+            $table->decimal('from_lat', 10, 8)->nullable(); // широта отправления
+            $table->decimal('from_lng', 11, 8)->nullable(); // долгота отправления
+            $table->string('from_address')->nullable(); // название начального адреса
+            // Конечная точка - координаты или название адреса
+            $table->decimal('to_lat', 10, 8)->nullable(); // широта назначения
+            $table->decimal('to_lng', 11, 8)->nullable(); // долгота назначения
+            $table->string('to_address')->nullable(); // название конечного адреса
+            // Статус заявки
+            $table->enum('status', ['active', 'completed', 'in_progress'])->default('active');
+            $table->string('role')->nullable(); // passenger | driver
             $table->date('date');
             $table->time('time');
-            $table->unsignedTinyInteger('seats'); // доступные места
-            $table->unsignedBigInteger('price'); // цена за место
-            $table->text('note')->nullable(); // комментарий
-            $table->string('carModel');
-            $table->string('carColor');
-            $table->string('numberCar');
-            $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
+            $table->unsignedInteger('amount')->nullable(); // сумма
+            $table->unsignedTinyInteger('seats')->default(1); // количество пассажиров
+            $table->text('comment')->nullable();
+            $table->boolean('pochta')->default(false);
+
             $table->timestamps();
         });
     }

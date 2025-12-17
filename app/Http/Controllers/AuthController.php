@@ -19,7 +19,7 @@ class AuthController extends Controller
         ]);
 
         // ===== DEV LOGIN WITHOUT OTP =====
-        if ($request->phone === '123123123' || $request->phone === '910018902') {
+        if ($request->phone === '123123123' || $request->phone === '123123122') {
 
             $user = User::where('phone', $request->phone)->first();
 

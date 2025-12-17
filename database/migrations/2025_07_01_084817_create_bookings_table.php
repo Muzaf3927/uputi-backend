@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('trip_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // пассажир
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->unsignedTinyInteger('seats')->default(1); // сколько мест забронировано
-            $table->unsignedInteger('offered_price')->nullable(); // цена, предложенная пассажиром
+            $table->unsignedInteger('offered_price')->nullable(); // цена, предложенная
             $table->text('comment')->nullable(); // комментарий к заявке
-            $table->enum('status', ['pending', 'confirmed', 'declined', 'cancelled'])->default('pending');
-            $table->boolean('is_read')->default(false);
+            $table->string('role')->nullable(); // passenger | driver
+            $table->enum('status', ['in_progress', 'completed', 'cancelled'])->default('in_progress');
             $table->timestamps();
         });
     }

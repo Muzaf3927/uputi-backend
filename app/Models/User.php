@@ -22,8 +22,6 @@ class User extends Authenticatable
         'balance',
         'rating',
         'rating_count',
-        'is_verified',
-        'verification_code',
         'telegram_chat_id'
     ];
 
@@ -40,36 +38,16 @@ class User extends Authenticatable
     ];
 
 
-    public function wallet()
+    public function car()
     {
-        return $this->hasOne(Wallet::class);
-    }
-    public function ratingsGiven()
-    {
-        return $this->hasMany(Rating::class, 'from_user_id');
-    }
-    public function ratingsReceived()
-    {
-        return $this->hasMany(Rating::class, 'to_user_id');
-    }
-    public function sentMessages()
-    {
-        return $this->hasMany(ChatMessage::class, 'sender_id');
-    }
-    public function receivedMessages()
-    {
-        return $this->hasMany(ChatMessage::class, 'receiver_id');
+        return $this->hasOne(Car::class);
     }
 
-    public function notifications()
+    public function trips()
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(Trip::class);
     }
 
-    public function unreadNotifications()
-    {
-        return $this->hasMany(Notification::class)->where('is_read', false);
-    }
 
 
 

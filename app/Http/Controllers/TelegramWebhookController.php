@@ -32,7 +32,10 @@ class TelegramWebhookController extends Controller
                 $user->save();
 
                 // отправляем приветственное сообщения
-                $this->sendMessage($chatId, "🔔 Tabriklaymiz! Endi Sizga xabar, yo'lovchi yoki haydovchi so'rovlari kelsa darhol shu yerda aks etadi");
+                $this->sendMessage($chatId, "🔔 Tabriklaymiz! Endi barcha yo'lovchi yoki haydovchi so'rovlari shu yerda aks etadi.\n\n" .
+                    "🔔 Поздравляем! Теперь все запросы пассажиров и водителей будут отображаться здесь."
+                );
+
             }
         }
 

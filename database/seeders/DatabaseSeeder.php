@@ -14,14 +14,23 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::create([
-            'name' => 'User',
+            'name' => 'UserPassenger3',
             'phone' => '123123123',
-            'role' => 'driver',
             'password' => null,
             'balance' => 10000,
             'rating' => 5.0,
             'rating_count' => 25,
-            'is_verified' => true,
         ]);
+
+        User::create([
+            'name' => 'UserDriver2',
+            'phone' => '123123122',
+            'password' => null,
+            'balance' => 10000,
+            'rating' => 5.0,
+            'rating_count' => 25,
+        ]);
+
+
     }
 }

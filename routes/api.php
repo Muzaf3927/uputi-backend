@@ -1,20 +1,16 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CarController;
 use App\Http\Controllers\TripController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\ChatController;
-use App\Http\Controllers\RatingController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\TelegramConnectController;
 use App\Http\Controllers\TelegramWebhookController;
-use App\Http\Controllers\PassengerRequestController;
-use App\Http\Controllers\DriverOfferController;
+use App\Http\Controllers\HistoryController;
 
 Route::get('/test', function () {
     return 'test';
@@ -40,64 +36,56 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [UserController::class, 'me']); //Получения данных пользователя
     Route::post('/user', [UserController::class, 'update']);
-    Route::post('/role/update', [UserController::class, 'updateRol']);
-    //Trips - Поездки
-    Route::post('/trip', [TripController::class, 'store']); // создать
-    Route::get('/my-trips', [TripController::class, 'myTrips']); //мои поездки
-    Route::get('/trips', [TripController::class, 'index']); //все поездки
-    Route::post('/trips/{trip}', [TripController::class, 'update']);   // обновить поездку
-    Route::delete('/trips/{trip}', [TripController::class, 'destroy']); // удалить поездку
-    Route::post('/trips/{trip}/complete', [TripController::class, 'complete']); // завершить поездку
-    Route::get('/trips/completed/mine', [TripController::class, 'myCompletedTrips']); // мои завершенные поездки (как водитель)
-    Route::get('/trips/completed/as-passenger', [TripController::class, 'myCompletedTripsAsPassenger']); // завершенные поездки, где я пассажир
-    //Bookings - Броны
+    Route::post('/role/update', [UserController::class, 'updateRole']);
 
-    Route::post('/trips/{trip}/booking', [BookingController::class, 'store']);// zabronirovat poezdku
-    Route::post('/bookings/{booking}', [BookingController::class, 'update']);// obnovit status bronirovaniya (naprimer, prinyat ili otklonit)
-    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);// otmenit moe bronirovanie (passazhir otmenyaet)
+//Trips - Поездки
+    // 1. Создать поездку (и пассажир, и водитель)
+    Route::post('/trips', [TripController::class, 'store']); //ок
+    // мои поездки для водителей кроме завершенных
+    Route::get('/trips/my', [TripController::class, 'myTrips']); //ок
+    // мои поездки для пассажиров кроме завершенных
+    Route::get('/trips/for/passenger/my', [TripController::class, 'myTripsForPassenger']);
 
-    Route::get('/bookings/trip/{trips}', [BookingController::class, 'show']);
-    // 4 отдельных API для разделов bookings
-    Route::get('/bookings/my/confirmed', [BookingController::class, 'myConfirmedBookings']);// 1. moi bronirovaniya (confirmed)
-    Route::get('/bookings/my/pending', [BookingController::class, 'myPendingBookings']);// 2. moi zaprosy (pending)
-    Route::get('/bookings/to-my-trips/confirmed', [BookingController::class, 'confirmedBookingsToMyTrips']);// 3. zayavki na moi poezdki (confirmed)
-    Route::get('/bookings/to-my-trips/pending', [BookingController::class, 'pendingBookingsToMyTrips']);// 4. zayavki na moi poezdki (pending)
-    Route::get('/bookings/unread-count', [BookingController::class, 'unreadCount']);// количество непрочитанных для каждого раздела
-    //Messages - Чаты
-    Route::post('/chats/{trip}/send', [ChatController::class, 'sendMessage']); //отправить сообщение
-    Route::get('/chats/{trip}/with/{receiver}', [ChatController::class, 'getChatMessages']); //получить чат
-    Route::get('/chats', [ChatController::class, 'getUserChats']); //все чаты пользователя
-    Route::get('/chats/unread-count', [ChatController::class, 'unreadCount']); //непрочитанные сообщение
-    //Notifications - Уведомление
-    Route::get('/notifications', [NotificationController::class, 'index']); // все уведомления
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // количество непрочитанных
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // отметить как прочитанное
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']); // прочитать все
+    // 5. Все активные поездки для водителй (по городу)
+    Route::get('/trips/active', [TripController::class, 'activeTrips']); //ок
+    // 5. Все активные поездки для пассажиров (межгород)
+    Route::get('/trips/for/passenger/active', [TripController::class, 'activeTripsForPassengers']);
+    // 6. завершить поездку пассажиров для водителей
+    Route::put('/trips/{trip}/completed', [TripController::class, 'completed']);
+     // 6. завершить свою поездку для водителей
+    Route::put('/trips/{trip}/completedIntercity', [TripController::class, 'completedIntercity']);
+    // 7. Удалить поездку
+    Route::delete('/trips/{trip}', [TripController::class, 'destroy']); //ок
+    // 8. Искать поездку
+    Route::get('/trips/search', [TripController::class, 'search']);
 
-    //Ratings - Оценка
-    Route::post('/ratings/{trip}/to/{toUser}', [RatingController::class, 'rateUser']);  //поставить оценку
-    Route::get('/ratings/user/{user}', [RatingController::class, 'getUserRatings']);  //отзывы пользователя
-    Route::get('/ratings/given', [RatingController::class, 'getMyRatingsGiven']); //мои отзывы
 
-    //Passenger Requests - Запросы пассажиров
-    Route::post('/passenger-requests', [PassengerRequestController::class, 'store']); // создать запрос
-    Route::get('/passenger-requests/my', [PassengerRequestController::class, 'myRequests']); // мои запросы
-    Route::get('/passenger-requests', [PassengerRequestController::class, 'index']); // все запросы
-    Route::post('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'update']); // обновить запрос
-    Route::delete('/passenger-requests/{passengerRequest}', [PassengerRequestController::class, 'destroy']); // удалить запрос
-    Route::get('/passenger-requests/{passengerRequest}/offers', [PassengerRequestController::class, 'getOffers']); // получить офферы на запрос
-    Route::get('/passenger-requests/search', [PassengerRequestController::class, 'search']);
+//Bookings - Броны
+    // 1. Забронировать заказ для водителей
+    Route::post('/bookings', [BookingController::class, 'store']);
+    // 1. Забронировать поездку для пассажиров
+    Route::post('/bookings/for/passenger', [BookingController::class, 'storeForPassenger']);
+    // 2. Отменить свой бронь на заказ для водителей
+    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+    // 2. Отменить свой бронь для пассажиров на поездку
+    Route::post('/bookings/{booking}/for/passengers/cancel', [BookingController::class, 'cancelForPassengers']);
+    // 3. Мои запросы in_progress
+    Route::get('/bookings/my/in-progress', [BookingController::class, 'myInProgress']);
+    // свои брони на поездку для пассажиров
+    Route::get('/bookings/my/for/passenger/in-progress', [BookingController::class, 'myInProgressForPassengers']);
+    // 4. Мои запросы completed
+    Route::get('/bookings/my/completed', [BookingController::class, 'myCompleted']);
 
-    //Driver Offers - Офферы водителей
-    Route::post('/passenger-requests/{passengerRequest}/offer', [DriverOfferController::class, 'store']); // создать оффер на запрос
-    Route::get('/driver-offers/my', [DriverOfferController::class, 'myOffers']); // мои офферы (как водитель)
-    Route::post('/driver-offers/{driverOffer}', [DriverOfferController::class, 'update']); // обновить оффер (изменить статус)
-    Route::post('/driver-offers/{driverOffer}/delete', [DriverOfferController::class, 'delete']); // отменить оффер
-
-    //Profile
-    Route::get('/users/me', [UserController::class, 'me']);
-    Route::get('/users/{user}', [UserController::class, 'user']);
     Route::delete('/user/delete-account', [UserController::class, 'deleteAccount']); //удалить аккаунт
+
+    // Для истории пассажиров
+    Route::get('/passenger/history', [HistoryController::class, 'passengerHistory']);
+    // Для истории водителй
+    Route::get('/driver/history', [HistoryController::class, 'driverHistory']);
+
+    Route::post('/car/driver', [CarController::class, 'store']);
+    Route::put('/car', [CarController::class, 'update']);
+    Route::get('/car', [CarController::class, 'show']);
 
     //Выйти
     Route::post('/logout', [AuthController::class, 'logout']); //выход

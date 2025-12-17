@@ -7,21 +7,13 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    /**
-     * Get the authenticated user's details.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json(
+            $request->user()->load('car')
+        );
     }
 
-    public function user(User $user)
-    {
-        return response()->json($user);
-    }
 
     public function update(Request $request)
     {
@@ -41,21 +33,20 @@ class UserController extends Controller
         ]);
     }
 
-    public function updateRol(Request $request)
+    public function updateRole(Request $request)
     {
-        $user = $request->user();
-
         $validated = $request->validate([
-            'role' => 'required|string|in:passenger,driver',
+            'role' => 'required|in:passenger,driver',
         ]);
 
-        $user->role = $validated['role'];
-        $user->save();
+        $request->user()->update([
+            'role' => $validated['role'],
+        ]);
 
         return response()->json([
             'message' => 'Role updated successfully',
-            'role' => $user->role
-        ], 200);
+            'role' => $validated['role'],
+        ]);
     }
 
     /**

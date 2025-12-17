@@ -7,17 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
+        Schema::create('cars', function (Blueprint $table) {
             $table->id();
-            $table->string('key')->unique(); // уникальный ключ
-            $table->text('value')->nullable(); // значение
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('model')->nullable();
+            $table->string('color')->nullable();
+            $table->string('number')->unique()->nullable();
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('settings');
+        Schema::dropIfExists('cars');
     }
 };
 

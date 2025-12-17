@@ -5,388 +5,241 @@ namespace App\Http\Controllers;
 use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
 use App\Models\Trip;
-use App\Models\ChatMessage;
-use App\Models\Notification;
 use App\Models\User;
+use App\Services\BookingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
-    // Sozdat bronirovanie (passazhir otpravlyaet zapros)
-    public function store(Request $request, Trip $trip)
+
+    public function __construct(
+        protected BookingService $bookingService
+    ) {}
+    /**
+     * 1. Забронировать поездку / заказ
+     *
+     * Логика:
+     * - passenger → бронирует поездку driver
+     * - driver → бронирует заказ passenger
+     */
+    public function store(Request $request)
     {
-        $request->validate([
-            'seats' => 'required|integer|min:1',
-            'offered_price' => 'nullable|integer|min:0',
-            'comment' => 'nullable|string|max:500',
+        $user = $request->user();
+
+        $data = $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+            'seats' => 'nullable|integer|min:1',
         ]);
 
-        // proveryaem, chto zaprashivaemoe kolichestvo mest ne prevyshaet dostupnoe
-        if ($request->seats > $trip->seats) {
-            return response()->json([
-                'message' => 'Requested number of seats exceeds available',
-                'available_seats' => $trip->seats,
-                'requested_seats' => $request->seats
-            ], 422);
-        }
+        $trip = Trip::findOrFail($data['trip_id']);
 
-        $existing = Booking::where('trip_id', $trip->id)
-            ->where('user_id', Auth::id())
-            ->first();
+        abort_if($trip->user_id === $user->id, 422);
 
-        if (!$existing || $existing->status === 'cancelled') {
-            $booking = Booking::updateOrCreate(
-                ['trip_id' => $trip->id, 'user_id' => Auth::id()],
-                [
-                    'seats' => $request->seats,
-                    'status' => 'pending',
-                    'offered_price' => $request->offered_price,
-                    'comment' => $request->comment,
-                ]
-            );
-
-            $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga so'rov junatdi. So'rovlar bo'limidan qabul qiling yoki rad eting ";
-
-            if ($request->offered_price) {
-                $message = Auth::user()->name . " {$trip->from_city} → {$trip->to_city} safariga {$request->offered_price} so'm taklif qilyapti. So'rovlar bo'limidan qabul qiling yoki rad eting";
-            }
-
-            Notification::create([
-                'user_id' => $trip->user_id,
-                'sender_id' => Auth::id(),
-                'type' => 'new_booking',
-                'message' => $message,
-                'data' => json_encode([
-                    'trip_id'       => $trip->id,
-                    'booking_id'    => $booking->id,
-                    'passenger_id'  => Auth::id(),
-                    'offered_price' => $booking->offered_price,
-                    'comment'       => $booking->comment,
-                ]),
-            ]);
-
-            // === Telegram уведомление ===
-            $user = User::find($trip->user_id);
-
-            if ($user && $user->telegram_chat_id) {
-                dispatch(new SendTelegramNotificationJob(
-                    $user->telegram_chat_id,
-                    $message
-                ));
-            }
-
-            return response()->json([
-                'message' => 'Booking request sent',
-                'booking' => $booking,
-            ], 201);
-
-        } elseif ($existing->status === 'confirmed') {
-            return response()->json(['message' => 'You have already booked a seat'], 200);
-        } elseif ($existing->status === 'declined') {
-            return response()->json(['message' => 'Driver did not approve'], 403);
-        }
-
-        return response()->json(['message' => 'Your request is pending'], 403);
-    }
-
-    // Obnovit status bronirovaniya (voditel prinyal/otklonil)
-    public function update(Request $request, Booking $booking)
-    {
-        $user = Auth::user();
-        $trip = $booking->trip;
-
-        if ($user->id !== $trip->user_id) {
-            return response()->json(['message' => 'No access'], 403);
-        }
-
-        $validated = $request->validate([
-            'status' => 'required|in:confirmed,declined,cancelled',
+        $booking = Booking::create([
+            'trip_id' => $trip->id,
+            'user_id' => $user->id,
+            'seats'   => $data['seats'] ?? 1,
+            'role'    => $user->role, // driver
+            'status'  => 'in_progress',
         ]);
 
-        $oldStatus = $booking->status;
-        $newStatus = $validated['status'];
+        $trip->update(['status' => 'in_progress']);
 
-        // obnovlyaem status bronirovaniya
-        $booking->update(['status' => $newStatus]);
+        // 👤 пассажир — владелец trip
+        $passenger = User::find($trip->user_id);
+        $driver = $user;
 
-        // obnovlyaem kolichestvo svobodnyh mest v poezdke
-        if ($oldStatus !== $newStatus) {
-            if ($newStatus === 'confirmed' && $oldStatus !== 'confirmed') {
-                // podtverzhdaem bronirovanie - umenshaem kolichestvo mest
-                if ($trip->seats >= $booking->seats) {
-                    $trip->seats -= $booking->seats;
-                    $trip->save();
+        // 📝 сообщения
+        $messagePassenger = "$trip->from_address -> $trip->to_address Haydovchi topildi, mening zakazlarim bo‘limida ko‘rishingiz mumkin!
+        Водитель нашелся, можете посмотреть в разделе мои заказы";
 
-                    // sozdaem privetstvennoe soobshenie v chate
-                    $welcomeMessage = ChatMessage::create([
-                        'trip_id' => $trip->id,
-                        'sender_id' => $trip->user_id, // voditel
-                        'receiver_id' => $booking->user_id, // passazhir
-                        'message' => "Salom, man sizning {$trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} so'rovingizni qabul qildim"
-                    ]);
+        $messageDriver = "{$trip->from_address} → {$trip->to_address} Yo‘lovchi sizni kutmoqda, mening bronlarim bo'limida ko'rishingiz mumkin!
+            Пассажир ждет вас, можете посмотреть в разделе мои брони ";
 
-                    // sozdanie uvedomleniya dlya passazhira
-                    Notification::create([
-                        'user_id' => $booking->user_id,
-                        'sender_id' => $trip->user_id,
-                        'type' => 'booking_confirmed',
-                        'message' => "So'rovingiz {$trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} qabul qilindi. Bronlar yoki Chatlar bo'limidan haydovchi bilan boglanishingiz mumkin!",
-                        'data' => json_encode([
-                            'trip_id' => $trip->id,
-                            'booking_id' => $booking->id,
-                            'chat_message_id' => $welcomeMessage->id
-                        ]),
-                    ]);
-                    // === Telegram уведомление о подтверждении ===
-                    $passenger = User::find($booking->user_id);
-
-                    if ($passenger && $passenger->telegram_chat_id) {
-                        $text = "✅ Haydovchi sizning safar so'rovingizni qabul qildi! Bronlar yoki Chatlar bolimidan haydovchi bilan boglanishingiz mumkin\n"
-                            . "{$trip->from_city} → {$trip->to_city}\n"
-                            . "{$trip->data}, {$trip->time}";
-
-                        dispatch(new SendTelegramNotificationJob(
-                            $passenger->telegram_chat_id,
-                            $text
-                        ));
-                    }
-
-                } else {
-                    return response()->json([
-                        'message' => 'Not enough available seats for confirmation',
-                        'available_seats' => $trip->seats,
-                        'requested_seats' => $booking->seats
-                    ], 422);
-                }
-            } elseif ($oldStatus === 'confirmed' && $newStatus !== 'confirmed') {
-                // otmenyaem podtverzhdennoe bronirovanie - vozvrashaem mesta
-                $trip->seats += $booking->seats;
-                $trip->save();
-
-                // sozdanie uvedomleniya ob otmene
-                Notification::create([
-                    'user_id' => $booking->user_id,
-                    'sender_id' => $trip->user_id,
-                    'type' => 'booking_cancelled',
-                    'message' => "So'rovingiz {$trip->from_city} → {$trip->to_city}, {$trip->data}, {$trip->time} haydovchi tomonidan rad etildi",
-                    'data' => json_encode([
-                        'trip_id' => $trip->id,
-                        'booking_id' => $booking->id
-                    ]),
-                ]);
-                // === Telegram уведомление об отмене ===
-                $passenger = User::find($booking->user_id);
-
-                if ($passenger && $passenger->telegram_chat_id) {
-                    $text = "❌ Haydovchi sizning safar so'rovingizni rad etdi.\n"
-                        . "{$trip->from_city} → {$trip->to_city}\n"
-                        . "{$trip->data}, {$trip->time}";
-
-                    dispatch(new SendTelegramNotificationJob(
-                        $passenger->telegram_chat_id,
-                        $text
-                    ));
-                }
-
-            }
-        }
-
-        return response()->json([
-            'message' => 'Status updated',
-            'status' => $booking->status,
-            'trip_seats_remaining' => $trip->seats,
-            'passenger_offer' => [
-                'offered_price' => $booking->offered_price,
-                'comment' => $booking->comment
-            ],
-            'trip_price' => $trip->price // tsena, kotoruyu ukazal voditel
-        ], 201);
-    }
-
-    // Otmenit moe bronirovanie (passazhir otmenyaet)
-    public function cancel(Request $request, Booking $booking)
-    {
-        if ($booking->user_id !== Auth::id()) {
-            return response()->json(['message' => 'No access'], 403);
-        }
-
-        if (!in_array($booking->status, ['confirmed', 'pending'])) {
-            return response()->json(['message' => 'Cannot cancel booking in this status'], 422);
-        }
-
-        $trip = $booking->trip;
-        $oldStatus = $booking->status;
-        $passengerName = Auth::user()->name;
-
-        if ($oldStatus === 'confirmed') {
-            $trip->seats += $booking->seats;
-            $trip->save();
-        }
-
-        // vsegda uvedomlyaem voditelya
-        Notification::create([
-            'user_id' => $trip->user_id, // voditel
-            'sender_id' => Auth::id(),
-            'type' => 'booking_cancelled_by_passenger',
-            'message' => "{$passengerName} $trip->from_city → {$trip->to_city}, {$trip->data}, {$trip->time} bo'yicha surovini bekor qildi",
-            'data' => json_encode([
-                'trip_id' => $trip->id,
-                'booking_id' => $booking->id,
-                'old_status' => $oldStatus
-            ]),
-        ]);
-
-        // === Telegram уведомление водителю ===
-        $driver = User::find($trip->user_id);
-
-        if ($driver && $driver->telegram_chat_id) {
-            $text = "❗ Yo‘lovchi o‘z so‘rovini bekor qildi.\n"
-                . "{$trip->from_city} → {$trip->to_city}\n"
-                . "{$trip->data}, {$trip->time}\n"
-                . "Yo‘lovchi: {$passengerName}";
-
+        // 🔔 уведомляем пассажира
+        if ($passenger && $passenger->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
-                $driver->telegram_chat_id,
-                $text
+                $passenger->telegram_chat_id,
+                $messagePassenger
             ));
         }
 
+        // 🔔 уведомляем водителя
+        if ($driver->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $driver->telegram_chat_id,
+                $messageDriver
+            ));
+        }
 
-        // Удаляем бронь вместо смены статуса
+        return response()->json($booking, 201);
+    }
+
+
+    public function storeForPassenger(Request $request)
+    {
+        $passenger = $request->user();
+
+        $data = $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+            'seats'   => 'nullable|integer|min:1',
+        ]);
+
+        $seats = $data['seats'] ?? 1;
+
+        // поездка водителя
+        $trip = Trip::where('id', $data['trip_id'])
+            ->where('role', 'driver')
+            ->firstOrFail();
+
+        // ❌ если мест не хватает
+        abort_if($trip->seats < $seats, 422, 'Not enough seats');
+
+        // ❌ повторная бронь
+        abort_if(
+            Booking::where('trip_id', $trip->id)
+                ->where('user_id', $passenger->id)
+                ->exists(),
+            403,
+            'You already booked this trip'
+        );
+
+        DB::transaction(function () use ($trip, $passenger, $seats, &$booking) {
+
+            $booking = Booking::create([
+                'trip_id' => $trip->id,
+                'user_id' => $passenger->id,
+                'seats'   => $seats,
+                'role'    => 'passenger',
+                'status'  => 'in_progress',
+            ]);
+
+            // уменьшаем доступные места
+            $trip->decrement('seats', $seats);
+        });
+
+        // 👤 водитель (владелец поездки)
+        $driver = User::find($trip->user_id);
+
+        // 📝 сообщения
+        $messageDriver = "$trip->from_address -> $trip->to_address Yangi yo‘lovchi topildi! $seats joy bron qildi, Akitivniy safarlarim bo'limidan ko'rishingiz mumkin!
+        Нашелся новый пассажир! Забронировал $seats место, можете посмотреть в разделе мои активные поездки ";
+
+        $messagePassenger =
+            "✅ Bron tasdiqlandi!\n" .
+            "{$trip->from_address} → {$trip->to_address}\n" .
+            "Haydovchi xabardor qilindi.";
+
+        // 🔔 уведомляем водителя
+        if ($driver && $driver->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $driver->telegram_chat_id,
+                $messageDriver
+            ));
+        }
+
+        // 🔔 уведомляем пассажира
+        if ($passenger->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                $messagePassenger
+            ));
+        }
+
+        return response()->json($booking, 201);
+    }
+
+
+    public function myInProgressForPassengers(Request $request)
+    {
+        $user = $request->user();
+        return  Booking::where('role', 'passenger')
+            ->where('status', '!=', 'completed')
+            ->where('user_id', $user->id)
+            ->with('trip.user.car')
+            ->latest()
+            ->get();
+
+    }
+
+    /**
+     * 2. Отменить бронь
+     */
+    public function cancel(Request $request, Booking $booking)
+    {
+        // только владелец брони
+        abort_if($booking->user_id !== $request->user()->id, 403);
+        $booking->delete();
+        $trip = Trip::where('id', $booking->trip_id)->first();
+        $trip->update(['status' => 'active']);
+
+
+        $passenger = User::find($trip->user_id);
+        $message = "$trip->from_address -> $trip->to_address Haydovchi bekor qildi, boshqa haydovchi qidirilmoqda!
+        Водитель отменил свой брон, ищется другой водитель! ";
+
+        if ($passenger && $passenger->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                $message
+            ));
+        }
+
+        return response()->json([
+            'message' => 'Бронь отменена'
+        ]);
+    }
+    public function cancelForPassengers(Request $request, Booking $booking)
+    {
+        if ($booking->user_id !== $request->user()->id) {
+            abort(403);
+        }
+        $trip = Trip::where('id', $booking->trip_id)->first();
+        $trip->increment('seats', $booking->seats);
         $booking->delete();
 
+        $passenger = User::find($trip->user_id);
+        $message = "$trip->from_address -> $trip->to_address Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda!
+        Пассажир отменил свой брон, ищется другой пассажир! ";
+
+        if ($passenger && $passenger->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                $message
+            ));
+        }
+
         return response()->json([
-            'message' => 'Zayavka uspeshno otmenena i udalena',
-            'trip_seats_remaining' => $trip->seats,
+            'message' => 'Бронь отменена'
         ]);
     }
 
-    // 1. Moi bronirovaniya (gde ya passazhir, status confirmed)
-    public function myConfirmedBookings()
+    /**
+     * 3. Мои запросы in_progress
+     */
+    public function myInProgress(Request $request)
     {
-        $bookings = Booking::with(['trip.driver'])
-            ->where('user_id', Auth::id())
-            ->where('status', 'confirmed')
-            ->orderByDesc('created_at')
+        $user = $request->user();
+        return Booking::where('user_id', $user->id)
+            ->where('status', 'in_progress')
+            ->where('role', 'driver')
+            ->with('trip.user')
             ->get();
-
-        // Отмечаем все мои confirmed бронирования как прочитанные
-        Booking::where('user_id', Auth::id())
-            ->where('status', 'confirmed')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['bookings' => $bookings]);
     }
 
-    // 2. Moi zaprosy (gde ya passazhir, status pending)
-    public function myPendingBookings()
+
+    /**
+     * 4. Мои запросы completed
+     */
+    public function myCompleted(Request $request)
     {
-        $bookings = Booking::with('trip')
-            ->where('user_id', Auth::id())
-            ->where('status', 'pending')
-            ->orderByDesc('created_at')
-            ->get();
-
-        // Отмечаем все мои pending запросы как прочитанные
-        Booking::where('user_id', Auth::id())
-            ->where('status', 'pending')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['bookings' => $bookings]);
+        return $this->bookingService
+            ->getMyBookingsByStatus(
+                $request->user(),
+                'completed'
+            );
     }
 
-    // 3. Zayavki na moi poezdki (gde ya voditel, status confirmed)
-    public function confirmedBookingsToMyTrips()
-    {
-        $bookings = Booking::with(['trip', 'user'])
-            ->where('status', 'confirmed')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->orderByDesc('created_at')
-            ->get();
-
-        // Отмечаем все confirmed заявки на мои поездки как прочитанные
-        Booking::where('status', 'confirmed')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['bookings' => $bookings]);
-    }
-
-    // 4. Zayavki na moi poezdki (gde ya voditel, status pending)
-    public function pendingBookingsToMyTrips()
-    {
-        $bookings = Booking::with(['trip', 'user'])
-            ->where('status', 'pending')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->orderByDesc('created_at')
-            ->get();
-
-        // Отмечаем все pending заявки на мои поездки как прочитанные
-        Booking::where('status', 'pending')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['bookings' => $bookings]);
-    }
-
-    // Получить количество непрочитанных заявок для каждого раздела
-    public function unreadCount()
-    {
-        $myConfirmedUnread = Booking::where('user_id', Auth::id())
-            ->where('status', 'confirmed')
-            ->where('is_read', false)
-            ->count();
-
-        $myPendingUnread = Booking::where('user_id', Auth::id())
-            ->where('status', 'pending')
-            ->where('is_read', false)
-            ->count();
-
-        $toMyTripsConfirmedUnread = Booking::where('status', 'confirmed')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_read', false)
-            ->count();
-
-        $toMyTripsPendingUnread = Booking::where('status', 'pending')
-            ->whereHas('trip', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_read', false)
-            ->count();
-
-        return response()->json([
-            'my_confirmed_unread' => $myConfirmedUnread,
-            'my_pending_unread' => $myPendingUnread,
-            'to_my_trips_confirmed_unread' => $toMyTripsConfirmedUnread,
-            'to_my_trips_pending_unread' => $toMyTripsPendingUnread,
-        ]);
-    }
-
-    public function show(Trip $trip)
-    {
-        // Berem vse bookingi bez ogranicheniy po statusu
-        $bookings = $trip->bookings()
-            ->with('user')
-            ->orderByDesc('created_at')
-            ->get();
-
-        return response()->json(['bookings' => $bookings]);
-
-    }
 
 }
