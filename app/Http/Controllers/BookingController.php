@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\BookingCreated;
+use App\Events\BookingUpdated;
+use App\Events\BookingCompleted;
+use App\Events\BookingCancelled;
+use App\Events\TripUpdated;
 use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
 use App\Models\Trip;
@@ -45,6 +50,10 @@ class BookingController extends Controller
         ]);
 
         $trip->update(['status' => 'in_progress']);
+
+        // Отправляем события через WebSocket
+        event(new BookingCreated($booking->load(['user.car', 'trip.user'])));
+        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
 
         // 👤 пассажир — владелец trip
         $passenger = User::find($trip->user_id);
@@ -119,6 +128,10 @@ class BookingController extends Controller
             $trip->decrement('seats', $seats);
         });
 
+        // Отправляем события через WebSocket
+        event(new BookingCreated($booking->load(['user.car', 'trip.user'])));
+        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
+
         // 👤 водитель (владелец поездки)
         $driver = User::find($trip->user_id);
 
@@ -170,9 +183,19 @@ class BookingController extends Controller
     {
         // только владелец брони
         abort_if($booking->user_id !== $request->user()->id, 403);
-        $booking->delete();
         $trip = Trip::where('id', $booking->trip_id)->first();
+        
+        // Загружаем связи перед удалением для события
+        $booking->load(['user.car', 'trip.user']);
+        
+        // Отправляем событие об отмене бронирования
+        event(new BookingCancelled($booking));
+        
+        $booking->delete();
         $trip->update(['status' => 'active']);
+
+        // Отправляем события через WebSocket
+        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
 
 
         $passenger = User::find($trip->user_id);
@@ -196,8 +219,18 @@ class BookingController extends Controller
             abort(403);
         }
         $trip = Trip::where('id', $booking->trip_id)->first();
+        
+        // Загружаем связи перед удалением для события
+        $booking->load(['user.car', 'trip.user']);
+        
+        // Отправляем событие об отмене бронирования
+        event(new BookingCancelled($booking));
+        
         $trip->increment('seats', $booking->seats);
         $booking->delete();
+
+        // Отправляем события через WebSocket
+        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
 
         $passenger = User::find($trip->user_id);
         $message = "$trip->from_address -> $trip->to_address Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda!
