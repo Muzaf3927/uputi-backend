@@ -82,7 +82,19 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // ВАЖНО: Для Laravel Cloud Reverb настройки allowed_origins могут управляться через Laravel Cloud Dashboard
+                // Убедитесь, что домены добавлены в панели управления Laravel Cloud
+                // Также можно использовать переменную окружения REVERB_ALLOWED_ORIGINS
+                'allowed_origins' => env('REVERB_ALLOWED_ORIGINS') 
+                    ? array_map('trim', explode(',', env('REVERB_ALLOWED_ORIGINS')))
+                    : [
+                        'https://uputi.net',
+                        'https://www.uputi.net',
+                        'https://ride-share-pro.netlify.app',
+                        'https://uputimaster.vercel.app',
+                        'http://localhost:5173', // для локальной разработки
+                        'http://localhost:3000', // для локальной разработки
+                    ],
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
