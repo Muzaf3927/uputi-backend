@@ -51,6 +51,13 @@ class TripController extends Controller
             ...$data
         ]);
 
+        // Отправляем событие WebSocket для моментального обновления
+        // Событие отправляется в канал drivers.trips (публичный)
+        \Log::info('Отправка TripCreated события', [
+            'trip_id' => $trip->id,
+            'role' => $trip->role,
+            'channel' => 'drivers.trips'
+        ]);
         event(new TripCreated($trip));
 
         return response()->json($trip, 201);
@@ -145,6 +152,11 @@ class TripController extends Controller
             ));
         }
 
+        // Отправляем событие WebSocket для моментального обновления
+        \Log::info('Отправка TripUpdated события (completed)', [
+            'trip_id' => $trip->id,
+            'status' => 'completed'
+        ]);
         event(new TripUpdated(
             $trip,
             notifyUserIds: [
@@ -201,16 +213,24 @@ class TripController extends Controller
             ));
         }
 
+        // Отправляем событие WebSocket для моментального обновления
+        $notifyUserIds = collect(
+            DB::table('bookings')
+                ->where('trip_id', $trip->id)
+                ->pluck('user_id')
+        )
+            ->push($driver->id)
+            ->unique()
+            ->toArray();
+        
+        \Log::info('Отправка TripUpdated события (completedIntercity)', [
+            'trip_id' => $trip->id,
+            'status' => 'completed',
+            'notify_user_ids' => $notifyUserIds
+        ]);
         event(new TripUpdated(
             $trip,
-            notifyUserIds: collect(
-                DB::table('bookings')
-                    ->where('trip_id', $trip->id)
-                    ->pluck('user_id')
-            )
-                ->push($driver->id)
-                ->unique()
-                ->toArray()
+            notifyUserIds: $notifyUserIds
         ));
 
         return response()->json($trip);
@@ -223,6 +243,24 @@ class TripController extends Controller
     public function destroy(Request $request, Trip $trip)
     {
         abort_if($trip->user_id !== $request->user()->id, 403);
+
+        // Получаем ID пользователей, которых нужно уведомить перед удалением
+        $notifyUserIds = collect([$trip->user_id])
+            ->merge(
+                $trip->bookings()->pluck('user_id')
+            )
+            ->unique()
+            ->toArray();
+
+        // Отправляем событие WebSocket перед удалением для моментального обновления
+        \Log::info('Отправка TripUpdated события (destroy)', [
+            'trip_id' => $trip->id,
+            'notify_user_ids' => $notifyUserIds
+        ]);
+        event(new TripUpdated(
+            $trip,
+            notifyUserIds: $notifyUserIds
+        ));
 
         $trip->delete();
 

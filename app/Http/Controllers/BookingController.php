@@ -59,6 +59,13 @@ class BookingController extends Controller
         $messageDriver = "{$trip->from_address} → {$trip->to_address} Yo‘lovchi sizni kutmoqda, mening bronlarim bo'limida ko'rishingiz mumkin!
             Пассажир ждет вас, можете посмотреть в разделе мои брони ";
 
+        // Отправляем событие WebSocket для моментального обновления
+        \Log::info('Отправка TripBooked события', [
+            'booking_id' => $booking->id,
+            'trip_id' => $trip->id,
+            'passenger_id' => $trip->user_id,
+            'driver_id' => $user->id
+        ]);
         event(new TripBooked(
             $booking,
             passengerId: $trip->user_id,
@@ -127,6 +134,13 @@ class BookingController extends Controller
             $trip->decrement('seats', $seats);
         });
 
+        // Отправляем событие WebSocket для моментального обновления
+        \Log::info('Отправка TripBooked события (storeForPassenger)', [
+            'booking_id' => $booking->id,
+            'trip_id' => $trip->id,
+            'passenger_id' => $passenger->id,
+            'driver_id' => $trip->user_id
+        ]);
         event(new TripBooked(
             $booking,
             passengerId: $passenger->id,
@@ -189,6 +203,11 @@ class BookingController extends Controller
         $booking->delete();
         $trip->update(['status' => 'active']);
 
+        // Отправляем событие WebSocket для моментального обновления
+        \Log::info('Отправка TripUpdated события (cancel)', [
+            'trip_id' => $trip->id,
+            'status' => 'active'
+        ]);
         event(new TripUpdated(
             $trip,
             notifyUserIds: [
@@ -222,6 +241,11 @@ class BookingController extends Controller
         $trip->increment('seats', $booking->seats);
         $booking->delete();
 
+        // Отправляем событие WebSocket для моментального обновления
+        \Log::info('Отправка TripUpdated события (cancelForPassengers)', [
+            'trip_id' => $trip->id,
+            'seats' => $trip->seats
+        ]);
         event(new TripUpdated(
             $trip,
             notifyUserIds: [

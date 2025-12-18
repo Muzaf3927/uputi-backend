@@ -31,6 +31,9 @@ class TripCreated implements ShouldBroadcast
     {
         return [
             'id'           => $this->trip->id,
+            'user_id'      => $this->trip->user_id,
+            'role'         => $this->trip->role, // driver или passenger
+            'status'       => $this->trip->status,
             'from_lat'     => $this->trip->from_lat,
             'from_lng'     => $this->trip->from_lng,
             'from_address' => $this->trip->from_address,
