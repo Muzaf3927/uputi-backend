@@ -20,11 +20,17 @@ class CarController extends Controller
     {
         $user = $request->user();
 
+        $carId = $user->car?->id;
 
         $data = $request->validate([
             'model' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
-            'number' => 'required|string|max:50|unique:cars,number',
+            'number' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('cars', 'number')->ignore($carId),
+            ],
         ]);
 
         $car = Car::updateOrCreate(
@@ -32,40 +38,7 @@ class CarController extends Controller
             $data
         );
 
-
         return response()->json($car, 201);
     }
-
-    /**
-     * Update current user's car (or create if missing -> upsert behaviour optional)
-     */
-    public function update(Request $request)
-    {
-        $user = $request->user();
-
-        $data = $request->validate([
-            'model' => 'nullable|string|max:255',
-            'color' => 'nullable|string|max:255',
-            'number' => [
-                'nullable',
-                'string',
-                'max:50',
-                Rule::unique('cars', 'number')
-                    ->ignore($user->car?->id),
-            ],
-        ]);
-
-        if ($user->car) {
-            $user->car->update($data);
-            return response()->json($user->car);
-        }
-
-        $car = Car::create(array_merge($data, [
-            'user_id' => $user->id,
-        ]));
-
-        return response()->json($car, 201);
-    }
-
 }
 

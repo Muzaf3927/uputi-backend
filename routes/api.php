@@ -84,7 +84,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/driver/history', [HistoryController::class, 'driverHistory']);
 
     Route::post('/car/driver', [CarController::class, 'store']);
-    Route::put('/car', [CarController::class, 'update']);
     Route::get('/car', [CarController::class, 'show']);
 
     //Выйти
