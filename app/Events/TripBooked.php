@@ -11,7 +11,8 @@ class TripBooked implements ShouldBroadcast
 {
     use SerializesModels;
 
-    public $afterCommit = true;
+    // Убираем afterCommit, чтобы события отправлялись синхронно
+    // public $afterCommit = true;
     public function __construct(
         public Booking $booking,
         public int $passengerId,
