@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Services\TripService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\TripCreated;
+use App\Events\TripUpdated;
 
 class TripController extends Controller
 {
@@ -48,6 +50,8 @@ class TripController extends Controller
             'status' => 'active',
             ...$data
         ]);
+
+        event(new TripCreated($trip));
 
         return response()->json($trip, 201);
     }
@@ -141,6 +145,14 @@ class TripController extends Controller
             ));
         }
 
+        event(new TripUpdated(
+            $trip,
+            notifyUserIds: [
+                $trip->user_id, // пассажир
+                $driver->id,    // водитель
+            ]
+        ));
+
         return response()->json($trip);
     }
 
@@ -188,6 +200,18 @@ class TripController extends Controller
                 $message
             ));
         }
+
+        event(new TripUpdated(
+            $trip,
+            notifyUserIds: collect(
+                DB::table('bookings')
+                    ->where('trip_id', $trip->id)
+                    ->pluck('user_id')
+            )
+                ->push($driver->id)
+                ->unique()
+                ->toArray()
+        ));
 
         return response()->json($trip);
     }

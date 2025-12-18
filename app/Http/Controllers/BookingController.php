@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TripUpdated;
 use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
 use App\Models\Trip;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\TripBooked;
 
 class BookingController extends Controller
 {
@@ -56,6 +58,12 @@ class BookingController extends Controller
 
         $messageDriver = "{$trip->from_address} → {$trip->to_address} Yo‘lovchi sizni kutmoqda, mening bronlarim bo'limida ko'rishingiz mumkin!
             Пассажир ждет вас, можете посмотреть в разделе мои брони ";
+
+        event(new TripBooked(
+            $booking,
+            passengerId: $trip->user_id,
+            driverId: $user->id
+        ));
 
         // 🔔 уведомляем пассажира
         if ($passenger && $passenger->telegram_chat_id) {
@@ -119,6 +127,13 @@ class BookingController extends Controller
             $trip->decrement('seats', $seats);
         });
 
+        event(new TripBooked(
+            $booking,
+            passengerId: $passenger->id,
+            driverId: $trip->user_id
+        ));
+
+
         // 👤 водитель (владелец поездки)
         $driver = User::find($trip->user_id);
 
@@ -174,6 +189,14 @@ class BookingController extends Controller
         $booking->delete();
         $trip->update(['status' => 'active']);
 
+        event(new TripUpdated(
+            $trip,
+            notifyUserIds: [
+                $trip->user_id,        // пассажир
+                $request->user()->id,  // водитель
+            ]
+        ));
+
 
         $passenger = User::find($trip->user_id);
         $message = "$trip->from_address -> $trip->to_address Haydovchi bekor qildi, boshqa haydovchi qidirilmoqda!
@@ -198,6 +221,14 @@ class BookingController extends Controller
         $trip = Trip::where('id', $booking->trip_id)->first();
         $trip->increment('seats', $booking->seats);
         $booking->delete();
+
+        event(new TripUpdated(
+            $trip,
+            notifyUserIds: [
+                $trip->user_id,           // водитель (владелец поездки)
+                $request->user()->id,     // пассажир
+            ]
+        ));
 
         $passenger = User::find($trip->user_id);
         $message = "$trip->from_address -> $trip->to_address Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda!
