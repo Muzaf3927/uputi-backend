@@ -2,7 +2,7 @@
 
 return [
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
     'allowed_methods' => ['*'],
 
@@ -17,6 +17,7 @@ return [
         '/^http:\/\/localhost:\d+$/', // разрешает любой localhost порт
         '/^http:\/\/127\.0\.0\.1:\d+$/', // разрешает 127.0.0.1 с любым портом
         '/^http:\/\/192\.168\.\d+\.\d+:\d+$/', // разрешает локальную сеть
+        '/^https:\/\/.*\.vercel\.app$/', // разрешает все Vercel домены
     ],
 
     'allowed_headers' => ['*'],
