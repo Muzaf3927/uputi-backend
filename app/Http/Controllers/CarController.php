@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Car;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CarController extends Controller
 {
@@ -45,7 +46,13 @@ class CarController extends Controller
         $data = $request->validate([
             'model' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
-            'number' => 'nullable|string|max:50|unique:cars,number,' . ($user->car?->id ?? 'NULL'),
+            'number' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('cars', 'number')
+                    ->ignore($user->car?->id),
+            ],
         ]);
 
         if ($user->car) {
@@ -53,9 +60,12 @@ class CarController extends Controller
             return response()->json($user->car);
         }
 
-        // Если машины нет — создаём
-        $car = Car::create(array_merge($data, ['user_id' => $user->id]));
+        $car = Car::create(array_merge($data, [
+            'user_id' => $user->id,
+        ]));
+
         return response()->json($car, 201);
     }
+
 }
 
