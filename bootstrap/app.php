@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
         
+        // Разрешаем запросы на /broadcasting/auth без CSRF для WebSocket авторизации
+        $middleware->validateCsrfTokens(except: [
+            'broadcasting/auth',
+        ]);
+        
         $middleware->alias([
             'sms.throttle' => \App\Http\Middleware\SmsThrottle::class,
         ]);
