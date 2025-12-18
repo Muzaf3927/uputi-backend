@@ -2,10 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\TripCreated;
-use App\Events\TripUpdated;
-use App\Events\TripCompleted;
-use App\Events\TripCancelled;
 use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
 use App\Models\Trip;
@@ -52,9 +48,6 @@ class TripController extends Controller
             'status' => 'active',
             ...$data
         ]);
-
-        // Отправляем событие через WebSocket
-        event(new TripCreated($trip->load(['user.car', 'bookings.user'])));
 
         return response()->json($trip, 201);
     }
@@ -136,13 +129,6 @@ class TripController extends Controller
                 ->update(['status' => 'completed']);
         });
 
-        // Обновляем модель для отправки события
-        $trip->refresh();
-
-        // Отправляем события через WebSocket
-        event(new TripCompleted($trip->load(['user.car', 'bookings.user'])));
-        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
-
         $passenger = User::where('id', $trip->user_id)
             ->first();
 
@@ -176,12 +162,7 @@ class TripController extends Controller
                 ->update(['status' => 'completed']);
         });
 
-        // Обновляем модель для отправки события
         $trip->refresh();
-        
-        // Отправляем события через WebSocket
-        event(new TripCompleted($trip->load(['user.car', 'bookings.user'])));
-        event(new TripUpdated($trip->load(['user.car', 'bookings.user'])));
 
         $message = "{$trip->from_address} → {$trip->to_address}\n"
             . "Sizning zakazingiz yakunlandi!\n"
@@ -219,12 +200,6 @@ class TripController extends Controller
     {
         abort_if($trip->user_id !== $request->user()->id, 403);
 
-        // Загружаем связи перед удалением для события
-        $trip->load(['user.car', 'bookings.user']);
-        
-        // Отправляем событие об отмене трипа
-        event(new TripCancelled($trip));
-        
         $trip->delete();
 
         return response()->json(['message' => 'Trip deleted']);

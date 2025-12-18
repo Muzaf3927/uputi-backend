@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\UserUpdated;
 use Illuminate\Http\Request;
 use App\Models\User;
 
@@ -31,9 +30,6 @@ class TelegramWebhookController extends Controller
                 // сохраняем chat_id в базу
                 $user->telegram_chat_id = $chatId;
                 $user->save();
-
-                // Отправляем событие через WebSocket для обновления данных пользователя на фронтенде
-                event(new UserUpdated($user->load('car')));
 
                 // отправляем приветственное сообщения
                 $this->sendMessage($chatId, "🔔 Tabriklaymiz! Endi barcha yo'lovchi yoki haydovchi so'rovlari shu yerda aks etadi.\n\n" .
