@@ -9,8 +9,6 @@ use App\Models\User;
 use App\Services\TripService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Events\TripCreated;
-use App\Events\TripUpdated;
 
 class TripController extends Controller
 {
@@ -51,15 +49,6 @@ class TripController extends Controller
             ...$data
         ]);
 
-        // Отправляем событие WebSocket СИНХРОННО для моментального обновления
-        // Событие отправляется в канал drivers.trips (публичный)
-        \Log::info('Отправка TripCreated события', [
-            'trip_id' => $trip->id,
-            'role' => $trip->role,
-            'channel' => 'drivers.trips'
-        ]);
-        // Используем broadcast() вместо event() для синхронной отправки
-        broadcast(new TripCreated($trip))->toOthers();
 
         return response()->json($trip, 201);
     }
@@ -153,18 +142,6 @@ class TripController extends Controller
             ));
         }
 
-        // Отправляем событие WebSocket СИНХРОННО для моментального обновления
-        \Log::info('Отправка TripUpdated события (completed)', [
-            'trip_id' => $trip->id,
-            'status' => 'completed'
-        ]);
-        broadcast(new TripUpdated(
-            $trip,
-            notifyUserIds: [
-                $trip->user_id, // пассажир
-                $driver->id,    // водитель
-            ]
-        ))->toOthers();
 
         return response()->json($trip);
     }
@@ -214,25 +191,6 @@ class TripController extends Controller
             ));
         }
 
-        // Отправляем событие WebSocket для моментального обновления
-        $notifyUserIds = collect(
-            DB::table('bookings')
-                ->where('trip_id', $trip->id)
-                ->pluck('user_id')
-        )
-            ->push($driver->id)
-            ->unique()
-            ->toArray();
-        
-        \Log::info('Отправка TripUpdated события (completedIntercity)', [
-            'trip_id' => $trip->id,
-            'status' => 'completed',
-            'notify_user_ids' => $notifyUserIds
-        ]);
-        broadcast(new TripUpdated(
-            $trip,
-            notifyUserIds: $notifyUserIds
-        ))->toOthers();
 
         return response()->json($trip);
     }
@@ -245,39 +203,8 @@ class TripController extends Controller
     {
         abort_if($trip->user_id !== $request->user()->id, 403);
 
-        // Получаем ID пользователей, которых нужно уведомить перед удалением
-        $notifyUserIds = collect([$trip->user_id])
-            ->merge(
-                $trip->bookings()->pluck('user_id')
-            )
-            ->unique()
-            ->toArray();
-
-        // Сохраняем данные для события ПЕРЕД удалением
-        $tripId = $trip->id;
-        $tripStatus = $trip->status;
-        $tripSeats = $trip->seats;
-
         // Удаляем поездку
         $trip->delete();
-
-        // Отправляем событие WebSocket СИНХРОННО после удаления
-        \Log::info('Отправка TripUpdated события (destroy)', [
-            'trip_id' => $tripId,
-            'notify_user_ids' => $notifyUserIds
-        ]);
-        
-        // Создаем временный объект Trip с нужными данными для события
-        $tripForBroadcast = new Trip();
-        $tripForBroadcast->id = $tripId;
-        $tripForBroadcast->status = 'deleted';
-        $tripForBroadcast->seats = $tripSeats;
-        
-        // Используем broadcastNow() для синхронной отправки (не через очередь)
-        broadcast(new TripUpdated(
-            $tripForBroadcast,
-            notifyUserIds: $notifyUserIds
-        ))->toOthers();
 
         return response()->json(['message' => 'Trip deleted']);
     }
