@@ -83,19 +83,23 @@ class BookingController extends Controller
         $passenger = $request->user();
 
         $data = $request->validate([
-            'trip_id' => 'required|exists:trips,id',
-            'seats'   => 'nullable|integer|min:1',
+            'trip_id'       => 'required|exists:trips,id',
+            'seats'         => 'nullable|integer|min:1',
+            'offered_price' => 'nullable|numeric|min:0',
         ]);
 
         $seats = $data['seats'] ?? 1;
+        $offeredPrice = $data['offered_price'] ?? null;
 
         // поездка водителя
         $trip = Trip::where('id', $data['trip_id'])
             ->where('role', 'driver')
             ->firstOrFail();
 
-        // ❌ если мест не хватает
-        abort_if($trip->seats < $seats, 422, 'Not enough seats');
+        // ❌ если мест не хватает (ТОЛЬКО если сразу бронируем)
+        if (!$offeredPrice) {
+            abort_if($trip->seats < $seats, 422, 'Not enough seats');
+        }
 
         // ❌ повторная бронь
         abort_if(
@@ -106,33 +110,54 @@ class BookingController extends Controller
             'You already booked this trip'
         );
 
-        DB::transaction(function () use ($trip, $passenger, $seats, &$booking) {
-
+        DB::transaction(function () use (
+            $trip,
+            $passenger,
+            $seats,
+            $offeredPrice,
+            &$booking
+        ) {
             $booking = Booking::create([
-                'trip_id' => $trip->id,
-                'user_id' => $passenger->id,
-                'seats'   => $seats,
-                'role'    => 'passenger',
-                'status'  => 'in_progress',
+                'trip_id'       => $trip->id,
+                'user_id'       => $passenger->id,
+                'seats'         => $seats,
+                'role'          => 'passenger',
+                'status'        => $offeredPrice ? 'requested' : 'in_progress',
+                'offered_price' => $offeredPrice,
             ]);
 
-            // уменьшаем доступные места
-            $trip->decrement('seats', $seats);
+            // уменьшаем места ТОЛЬКО при прямой брони
+            if (!$offeredPrice) {
+                $trip->decrement('seats', $seats);
+            }
         });
 
-
-
-        // 👤 водитель (владелец поездки)
+        // 👤 водитель
         $driver = User::find($trip->user_id);
 
         // 📝 сообщения
-        $messageDriver = "$trip->from_address -> $trip->to_address Yangi yo‘lovchi topildi! $seats joy bron qildi, Akitivniy safarlarim bo'limidan ko'rishingiz mumkin!
-        Нашелся новый пассажир! Забронировал $seats место, можете посмотреть в разделе мои активные поездки ";
+        if ($offeredPrice) {
+            $messageDriver =
+                "💰Yangi narx taklifi!\n" .
+                "{$trip->from_address} → {$trip->to_address}\n" .
+                "Yo‘lovchi {$seats} joy uchun {$offeredPrice} taklif qildi.\n" .
+                "Iltimos, tasdiqlang yoki rad eting.";
 
-        $messagePassenger =
-            "✅ Bron tasdiqlandi!\n" .
-            "{$trip->from_address} → {$trip->to_address}\n" .
-            "Haydovchi xabardor qilindi.";
+            $messagePassenger =
+                "⏳Sizning narx taklifingiz yuborildi.\n" .
+                "Haydovchi javobini kuting.";
+        } else {
+            // ✅ обычная бронь
+            $messageDriver =
+                "{$trip->from_address} → {$trip->to_address}\n" .
+                "Yangi yo‘lovchi topildi! {$seats} joy bron qildi.\n" .
+                "Мои активные поездки bo‘limidan ko‘rishingiz mumkin.";
+
+            $messagePassenger =
+                "Bron tasdiqlandi!\n" .
+                "{$trip->from_address} → {$trip->to_address}\n" .
+                "Haydovchi xabardor qilindi.";
+        }
 
         // 🔔 уведомляем водителя
         if ($driver && $driver->telegram_chat_id) {
@@ -152,6 +177,82 @@ class BookingController extends Controller
 
         return response()->json($booking, 201);
     }
+
+    public function accept(Request $request, Booking $booking)
+    {
+        $driver = $request->user();
+
+        $trip = Trip::findOrFail($booking->trip_id);
+
+        // ❌ только владелец поездки
+        abort_if($trip->user_id !== $driver->id, 403);
+
+        // ❌ можно принимать только requested
+        abort_if($booking->status !== 'requested', 422, 'Invalid booking status');
+
+        // ❌ если мест уже не хватает
+        abort_if($trip->seats < $booking->seats, 422, 'Not enough seats');
+
+        DB::transaction(function () use ($booking, $trip) {
+
+            $booking->update([
+                'status' => 'in_progress',
+            ]);
+
+            // уменьшаем места
+            $trip->decrement('seats', $booking->seats);
+        });
+
+        // 🔔 пассажир
+        $passenger = User::find($booking->user_id);
+
+        if ($passenger && $passenger->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                "✅ Haydovchi sizning narx taklifingizni qabul qildi!\n" .
+                "{$trip->from_address} → {$trip->to_address}"
+            ));
+        }
+
+        return response()->json([
+            'message' => 'Booking accepted',
+            'booking' => $booking->fresh()
+        ]);
+    }
+
+    public function delete(Request $request, Booking $booking)
+    {
+        $driver = $request->user();
+
+        $trip = Trip::findOrFail($booking->trip_id);
+
+        // ❌ только владелец поездки
+        abort_if($trip->user_id !== $driver->id, 403);
+
+        // ❌ только requested
+        abort_if($booking->status !== 'requested', 422, 'Invalid booking status');
+
+        $passenger = User::find($booking->user_id);
+
+        DB::transaction(function () use ($booking) {
+            $booking->delete();
+        });
+
+        // 🔔 пассажир
+        if ($passenger && $passenger->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                "❌ Haydovchi sizning narx taklifingizni rad etdi.\n" .
+                "Iltimos, boshqa safar tanlang."
+            ));
+        }
+
+        return response()->json([
+            'message' => 'Booking rejected'
+        ]);
+    }
+
+
 
 
     public function myInProgressForPassengers(Request $request)

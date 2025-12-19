@@ -65,6 +65,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings', [BookingController::class, 'store']);
     // 1. Забронировать поездку для пассажиров
     Route::post('/bookings/for/passenger', [BookingController::class, 'storeForPassenger']);
+    // 1. Принять брон от пассажира если предложил цену
+    Route::post('/bookings/{booking}/accept', [BookingController::class, 'accept']);
+    // 1. Удалять брон от пассажира если предложил цену
+    Route::post('/bookings/{booking}/delete', [BookingController::class, 'delete']);
+
     // 2. Отменить свой бронь на заказ для водителей
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
     // 2. Отменить свой бронь для пассажиров на поездку

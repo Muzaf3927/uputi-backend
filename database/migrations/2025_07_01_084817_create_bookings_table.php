@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedInteger('offered_price')->nullable(); // цена, предложенная
             $table->text('comment')->nullable(); // комментарий к заявке
             $table->string('role')->nullable(); // passenger | driver
-            $table->enum('status', ['in_progress', 'completed', 'cancelled'])->default('in_progress');
+            $table->enum('status', ['requested', 'in_progress', 'completed', 'cancelled'])->default('in_progress');
             $table->timestamps();
         });
     }
