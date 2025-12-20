@@ -84,14 +84,60 @@ class TripController extends Controller
             ->getMyTripsByStatus($request->user(), 'completed');
     }
 
+//    public function activeTrips(Request $request)
+//    {
+//        return Trip::where('status', 'active')
+//            ->where('role', '!=', 'driver')
+//            ->with(['user'])
+//            ->latest()
+//            ->get();
+//    }
+
     public function activeTrips(Request $request)
     {
-        return Trip::where('status', 'active')
+        $data = $request->validate([
+            'lat'    => 'required|numeric',
+            'lng'    => 'required|numeric',
+            'radius' => 'nullable|numeric|max:50',
+        ]);
+
+        $lat = $data['lat'];
+        $lng = $data['lng'];
+        $radius = max(0.1, min($data['radius'] ?? 10, 50));
+
+        // bounding box
+        $latRange = $radius / 111;
+        $lngRange = $radius / (111 * cos(deg2rad($lat)));
+
+        // формула расстояния
+        $haversine = "
+        (6371 * acos(
+            cos(radians(?)) *
+            cos(radians(from_lat)) *
+            cos(radians(from_lng) - radians(?)) +
+            sin(radians(?)) *
+            sin(radians(from_lat))
+        ))
+    ";
+        return Trip::query()
+            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
+            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
+
+            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
+
+            ->select('trips.*')
+            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+
+            ->where('status', 'active')
             ->where('role', '!=', 'driver')
-            ->with(['user'])
-            ->latest()
+
+            ->orderBy('distance')
+            ->with('user:id,name,avatar,rating,rating_count')
+            ->limit(200)
             ->get();
     }
+
+
 
     public function activeTripsForPassengers(Request $request)
     {
@@ -100,7 +146,7 @@ class TripController extends Controller
             ->where('seats', '>', 0)
             ->with(['user.car'])
             ->latest()
-            ->paginate(10);
+            ->paginate(20);
     }
 
     /**

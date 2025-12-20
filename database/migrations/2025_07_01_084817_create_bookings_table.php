@@ -21,7 +21,13 @@ return new class extends Migration
             $table->string('role')->nullable(); // passenger | driver
             $table->enum('status', ['requested', 'in_progress', 'completed', 'cancelled'])->default('in_progress');
             $table->timestamps();
+
+            $table->index('trip_id');
+            $table->index('user_id');
+            $table->index('status');
         });
+
+
     }
 
     /**

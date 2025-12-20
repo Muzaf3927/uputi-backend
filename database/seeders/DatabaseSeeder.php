@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::create([
-            'name' => 'UserPassenger3',
+            'name' => '3Passenger',
             'phone' => '123123123',
             'password' => null,
             'balance' => 10000,
@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::create([
-            'name' => 'UserDriver2',
+            'name' => '2Driver',
             'phone' => '123123122',
             'password' => null,
             'balance' => 10000,
