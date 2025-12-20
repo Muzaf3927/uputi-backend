@@ -83,10 +83,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::delete('/user/delete-account', [UserController::class, 'deleteAccount']); //удалить аккаунт
 
-    // Для истории пассажиров
-    Route::get('/passenger/history', [HistoryController::class, 'passengerHistory']);
-    // Для истории водителй
-    Route::get('/driver/history', [HistoryController::class, 'driverHistory']);
+    // Для истории пассажиров принятие
+    Route::get('/passenger/history/1', [HistoryController::class, 'passengerHistory1']);
+    // Для истории пассажиров брони
+    Route::get('/passenger/history/2', [HistoryController::class, 'passengerHistory2']);
+
+    // Для истории водителй принятие
+    Route::get('/driver/history/1', [HistoryController::class, 'driverHistory1']);
+    // Для истории водителй брони
+    Route::get('/driver/history/2', [HistoryController::class, 'driverHistory2']);
 
     Route::post('/car/driver', [CarController::class, 'store']);
     Route::get('/car', [CarController::class, 'show']);

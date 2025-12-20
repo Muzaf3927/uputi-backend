@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendTelegramNotificationJob;
-use App\Models\Booking;
+use App\Helpers\AddressHelper;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\TripService;
@@ -133,7 +133,15 @@ class TripController extends Controller
         $passenger = User::where('id', $trip->user_id)
             ->first();
 
-        $messagePassenger = "$trip->from_address -> $trip->to_address Sizning zakazingiz yakunlandi! Ваша поездка завершилась";
+
+        $from = AddressHelper::short($trip->from_address);
+        $to   = AddressHelper::short($trip->to_address);
+
+        $messagePassenger =
+            "{$from} → {$to}\n" .
+            "✅ Sizning zakazingiz yakunlandi!\n" .
+            "✅ Ваша поездка завершилась.";
+
 
         if ($passenger && $passenger->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
@@ -166,9 +174,13 @@ class TripController extends Controller
 
         $trip->refresh();
 
-        $message = "{$trip->from_address} → {$trip->to_address}\n"
-            . "Sizning zakazingiz yakunlandi!\n"
-            . "Ваша поездка завершилась";
+        $from = AddressHelper::short($trip->from_address);
+        $to   = AddressHelper::short($trip->to_address);
+
+        $message =
+            "{$from} → {$to}\n" .
+            "✅ Sizning zakazingiz yakunlandi!\n" .
+            "✅ Ваша поездка завершилась.";
 
         if ($driver->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class HistoryController extends Controller
 {
-    public function passengerHistory(Request $request)
+    public function passengerHistory1(Request $request)
     {
         $user = $request->user();
 
@@ -18,19 +18,27 @@ class HistoryController extends Controller
             ->with('bookings.user.car')
             ->paginate(5);
 
+        return response()->json([
+            'trips' => $myTrips,
+        ]);
+    }
+
+    public function passengerHistory2(Request $request)
+    {
+        $user = $request->user();
+
         $myBookings = Booking::where('user_id', $user->id)
             ->where('status', 'completed')
             ->where('role', 'passenger')
-            ->with('trip.user')
+            ->with('trip.user.car')
             ->paginate(5);
 
         return response()->json([
-            'trips' => $myTrips,
             'bookings' => $myBookings,
         ]);
     }
 
-    public function driverHistory(Request $request)
+    public function driverHistory1(Request $request)
     {
         $user = $request->user();
 
@@ -40,6 +48,15 @@ class HistoryController extends Controller
             ->with('bookings.user')
             ->paginate(5);
 
+        return response()->json([
+            'trips' => $myTrips,
+        ]);
+    }
+
+    public function driverHistory2(Request $request)
+    {
+        $user = $request->user();
+
         $myBookings = Booking::where('user_id', $user->id)
             ->where('status', 'completed')
             ->where('role', 'driver')
@@ -47,7 +64,6 @@ class HistoryController extends Controller
             ->paginate(5);
 
         return response()->json([
-            'trips' => $myTrips,
             'bookings' => $myBookings,
         ]);
 
