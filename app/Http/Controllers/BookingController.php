@@ -57,13 +57,13 @@ class BookingController extends Controller
         // 📝 сообщения
         $messagePassenger =
             "{$from} → {$to}\n" .
-            "Haydovchi topildi, mening zakazlarim bo‘limida ko‘rishingiz mumkin!\n" .
-            "Водитель нашелся, можете посмотреть в разделе мои заказы";
+            "Haydovchi topildi\n" .
+            "Водитель нашелся";
 
         $messageDriver =
             "{$from} → {$to}\n" .
-            "Yo‘lovchi sizni kutmoqda, mening bronlarim bo'limida ko'rishingiz mumkin!\n" .
-            "Пассажир ждет вас, можете посмотреть в разделе мои брони";
+            "Yo‘lovchi sizni kutmoqda\n" .
+            "Пассажир ждет вас";
 
 
         // 🔔 уведомляем пассажира
@@ -153,25 +153,24 @@ class BookingController extends Controller
             $messageDriver =
                 "💰Yangi narx taklifi!\n" .
                 "{$from} → {$to}\n" .
-                "Yo‘lovchi {$seats} joy uchun {$offeredPrice} taklif qildi.\n" .
-                "Iltimos, tasdiqlang yoki rad eting.";
+                "Yo‘lovchi {$seats} joy uchun {$offeredPrice} taklif qildi. Iltimos o'z zakazingizdan tasdiqlang yoki rad eting.\n" .
+                "Пассажир предлагает {$seats} за {$offeredPrice} место. Пожалуйста подтвердите или отмените в своем заказе.";
 
             $messagePassenger =
-                "⏳Sizning narx taklifingiz yuborildi.\n" .
-                "Haydovchi javobini kuting.";
+                "⏳Sizning taklifingiz junatildi. Haydovchi javobini kuting.\n" .
+                "Ваша предложения отправлена. Ждите ответ водителя";
 
         } else {
 
             // ✅ обычная бронь
             $messageDriver =
                 "{$from} → {$to}\n" .
-                "Yangi yo‘lovchi topildi! {$seats} joy bron qildi.\n" .
-                "Мои активные поездки bo‘limidan ko‘rishingiz mumkin.";
+                "Yangi yo‘lovchi {$seats} joy bron qildi, o'z zakazingizdan ko'rishimgiz mumkin \n" .
+                "Новый пассажир забронировал {$seats} место, можете посмотреть в своем заказе";
 
             $messagePassenger =
-                "Bron tasdiqlandi!\n" .
-                "{$from} → {$to}\n" .
-                "Haydovchi xabardor qilindi.";
+                "{$from} → {$to}\n" . "{$seats} joy bron qildingiz!\n" .
+                "Вы забронировали {$seats} место joy!";
         }
 
         // 🔔 уведомляем водителя
@@ -228,7 +227,7 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "✅ Haydovchi sizning narx taklifingizni qabul qildi!\n" .
+                "✅ Haydovchi sizning taklifingizni qabul qildi!\n" .
                 "✅ Водитель принял вашу предложение"
             ));
         }
@@ -265,7 +264,7 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "❌ Haydovchi sizning narx taklifingizni rad etdi.\n" .
+                "❌ Haydovchi sizning taklifingizni rad etdi.\n" .
                 "❌ Водитель отклонил ваше ценовое предложение.\n"
             ));
         }

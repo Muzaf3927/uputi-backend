@@ -84,15 +84,6 @@ class TripController extends Controller
             ->getMyTripsByStatus($request->user(), 'completed');
     }
 
-//    public function activeTrips(Request $request)
-//    {
-//        return Trip::where('status', 'active')
-//            ->where('role', '!=', 'driver')
-//            ->with(['user'])
-//            ->latest()
-//            ->get();
-//    }
-
     public function activeTrips(Request $request)
     {
         $data = $request->validate([
