@@ -252,6 +252,31 @@ class TripController extends Controller
     {
         abort_if($trip->user_id !== $request->user()->id, 403);
 
+        $passenger = $request->user();
+        $booking = $trip->bookings()
+            ->where('status', 'in_progress')
+            ->with('user') // водитель
+            ->first();
+
+        $driver = $booking?->user;
+
+        $from = AddressHelper::short($trip->from_address);
+        $to   = AddressHelper::short($trip->to_address);
+
+        // 📝 сообщение водителю
+        $messageDriver =
+            "{$from} → {$to}\n" .
+            "Yo‘lovchi safarni bekor qildi\n" .
+            "Пассажир отменил поездку";
+
+        // 🔔 уведомляем водителя
+        if ($driver && $driver->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $driver->telegram_chat_id,
+                $messageDriver
+            ));
+        }
+
         // Удаляем поездку
         $trip->delete();
 
