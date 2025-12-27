@@ -294,32 +294,39 @@ class TripController extends Controller
             'date' => 'nullable|date',
         ]);
 
-        $query = Trip::query()->where('role',  'driver')
+        $query = Trip::query()
+            ->where('role', 'driver')
             ->where('status', 'active')
             ->with(['bookings.user']);
 
+        // FROM
+        if (!empty($data['from'])) {
+            $from = $this->normalize($data['from']);
 
-        if (!empty($data['q'])) {
-            $search = $this->normalize($data['q']);
-
-            $query->where(function ($q) use ($search) {
-                $q->whereRaw(
-                    "LOWER(unaccent(from_address)) ILIKE ?",
-                    ["%{$search}%"]
-                )
-                    ->orWhereRaw(
-                        "LOWER(unaccent(to_address)) ILIKE ?",
-                        ["%{$search}%"]
-                    );
-            });
+            $query->whereRaw(
+                "LOWER(unaccent(from_address)) ILIKE ?",
+                ["%{$from}%"]
+            );
         }
 
+        // TO
+        if (!empty($data['to'])) {
+            $to = $this->normalize($data['to']);
+
+            $query->whereRaw(
+                "LOWER(unaccent(to_address)) ILIKE ?",
+                ["%{$to}%"]
+            );
+        }
+
+        // DATE
         if (!empty($data['date'])) {
             $query->whereDate('date', $data['date']);
         }
 
         return $query->latest()->get();
     }
+
 
     private function normalize(string $value): string
     {
