@@ -137,7 +137,7 @@ class TripController extends Controller
             ->where('seats', '>', 0)
             ->with(['user.car'])
             ->latest()
-            ->paginate(20);
+            ->paginate(10);
     }
 
     /**
