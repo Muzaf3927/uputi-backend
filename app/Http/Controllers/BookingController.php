@@ -30,7 +30,6 @@ class BookingController extends Controller
 
         $data = $request->validate([
             'trip_id' => 'required|exists:trips,id',
-            'seats' => 'nullable|integer|min:1',
         ]);
 
         $trip = Trip::findOrFail($data['trip_id']);
@@ -40,7 +39,7 @@ class BookingController extends Controller
         $booking = Booking::create([
             'trip_id' => $trip->id,
             'user_id' => $user->id,
-            'seats'   => $data['seats'] ?? 1,
+            'seats'   => $trip->seats,
             'role'    => $user->role, // driver
             'status'  => 'in_progress',
         ]);
