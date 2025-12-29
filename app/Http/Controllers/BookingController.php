@@ -330,6 +330,7 @@ class BookingController extends Controller
         }
         $trip = Trip::where('id', $booking->trip_id)->first();
         $trip->increment('seats', $booking->seats);
+        $trip->update(['status' => 'active']);
         $booking->delete();
 
 

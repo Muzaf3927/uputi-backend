@@ -17,6 +17,8 @@ class TripController extends Controller
         protected TripService $tripService,
     ) {}
 
+
+
     public function store(Request $request)
     {
         $user = $request->user();
@@ -39,19 +41,64 @@ class TripController extends Controller
             'amount' => 'nullable|integer',
             'seats' => 'nullable|integer|min:1',
             'comment' => 'nullable|string',
-            'role' => 'nullable|string',
         ]);
 
         $trip = Trip::create([
             'user_id' => $user->id,
             'role' => $user->role,
             'status' => 'active',
-            ...$data
-        ]);
 
+            // оригинальные адреса
+            'from_address' => $data['from_address'] ?? null,
+            'to_address'   => $data['to_address'] ?? null,
+
+            // НОРМАЛИЗОВАННЫЕ адреса
+            'from_address_normalized' => !empty($data['from_address'])
+                ? $this->normalize($data['from_address'])
+                : null,
+
+            'to_address_normalized' => !empty($data['to_address'])
+                ? $this->normalize($data['to_address'])
+                : null,
+
+            // остальные поля
+            'from_lat' => $data['from_lat'] ?? null,
+            'from_lng' => $data['from_lng'] ?? null,
+            'to_lat'   => $data['to_lat'] ?? null,
+            'to_lng'   => $data['to_lng'] ?? null,
+            'date'     => $data['date'],
+            'time'     => $data['time'],
+            'amount'   => $data['amount'] ?? null,
+            'seats'    => $data['seats'] ?? 1,
+            'comment'  => $data['comment'] ?? null,
+        ]);
 
         return response()->json($trip, 201);
     }
+
+
+    private function normalize(string $value): string
+    {
+        $value = mb_strtolower($value);
+
+        $map = [
+            // кир → лат
+            'а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'e',
+            'ж'=>'j','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m',
+            'н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u',
+            'ф'=>'f','х'=>'kh','ц'=>'ts','ч'=>'ch','ш'=>'sh','щ'=>'sh',
+            'ы'=>'y','э'=>'e','ю'=>'yu','я'=>'ya',
+
+            // узб
+            'қ'=>'q','ғ'=>'g','ў'=>'o','ҳ'=>'h',
+
+            // лат → единый вид
+            'x' => 'kh', // buxara → bukhara
+        ];
+
+        return strtr($value, $map);
+    }
+
 
     public function myTrips(Request $request)
     {
@@ -130,14 +177,61 @@ class TripController extends Controller
 
 
 
+//    public function activeTripsForPassengers(Request $request)
+//    {
+//        return Trip::where('role', 'driver')
+//            ->where('status', '!=', 'completed')
+//            ->where('seats', '>', 0)
+//            ->with(['user.car'])
+//            ->latest()
+//            ->paginate(10);
+//    }
     public function activeTripsForPassengers(Request $request)
     {
-        return Trip::where('role', 'driver')
-            ->where('status', '!=', 'completed')
+        $data = $request->validate([
+            'lat'    => 'required|numeric',
+            'lng'    => 'required|numeric',
+            'radius' => 'nullable|numeric|max:50', // км
+        ]);
+
+        $lat = $data['lat'];
+        $lng = $data['lng'];
+        $radius = max(0.5, min($data['radius'] ?? 10, 50));
+
+        // bounding box
+        $latRange = $radius / 111;
+        $lngRange = $radius / (111 * cos(deg2rad($lat)));
+
+        // формула расстояния (Haversine)
+        $haversine = "
+        (6371 * acos(
+            cos(radians(?)) *
+            cos(radians(from_lat)) *
+            cos(radians(from_lng) - radians(?)) +
+            sin(radians(?)) *
+            sin(radians(from_lat))
+        ))
+    ";
+
+        return Trip::query()
+            ->where('role', 'driver')
+            ->where('status', '!=','completed')
             ->where('seats', '>', 0)
+
+            // быстрый фильтр
+            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
+            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
+
+            // точный радиус
+            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
+
+            ->select('trips.*')
+            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+
             ->with(['user.car'])
-            ->latest()
-            ->paginate(10);
+            ->orderBy('distance')
+            ->limit(200)
+            ->get();
     }
 
     /**
@@ -303,19 +397,20 @@ class TripController extends Controller
         if (!empty($data['from'])) {
             $from = $this->normalize($data['from']);
 
-            $query->whereRaw(
-                "LOWER(unaccent(from_address)) ILIKE ?",
-                ["%{$from}%"]
+            $query->where(
+                'from_address_normalized',
+                'LIKE',
+                "%{$from}%"
             );
         }
 
-        // TO
         if (!empty($data['to'])) {
             $to = $this->normalize($data['to']);
 
-            $query->whereRaw(
-                "LOWER(unaccent(to_address)) ILIKE ?",
-                ["%{$to}%"]
+            $query->where(
+                'to_address_normalized',
+                'LIKE',
+                "%{$to}%"
             );
         }
 
@@ -328,21 +423,46 @@ class TripController extends Controller
     }
 
 
-    private function normalize(string $value): string
+    public function searchPassengerOrders(Request $request)
     {
-        $map = [
-            // кириллица → латиница
-            'а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'e',
-            'ж'=>'j','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m',
-            'н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u',
-            'ф'=>'f','х'=>'h','ц'=>'c','ч'=>'ch','ш'=>'sh','щ'=>'sh',
-            'ъ'=>'','ы'=>'y','ь'=>'','э'=>'e','ю'=>'yu','я'=>'ya',
+        $data = $request->validate([
+            'from' => 'nullable|string|min:1',
+            'to'   => 'nullable|string|min:1',
+            'date' => 'nullable|date',
+        ]);
 
-            // узбекские
-            'қ'=>'q','ғ'=>'g','ў'=>'o','ҳ'=>'h',
-        ];
+        $query = Trip::query()
+            ->where('role', 'passenger')
+            ->where('status', 'active')
+            ->with(['user']); // пассажир (кто создал заказ)
 
-        $value = mb_strtolower($value);
-        return strtr($value, $map);
+        // FROM
+        if (!empty($data['from'])) {
+            $from = $this->normalize($data['from']);
+
+            $query->where(
+                'from_address_normalized',
+                'LIKE',
+                "%{$from}%"
+            );
+        }
+
+        if (!empty($data['to'])) {
+            $to = $this->normalize($data['to']);
+
+            $query->where(
+                'to_address_normalized',
+                'LIKE',
+                "%{$to}%"
+            );
+        }
+
+        // DATE
+        if (!empty($data['date'])) {
+            $query->whereDate('date', $data['date']);
+        }
+
+        return $query->latest()->get();
     }
+
 }

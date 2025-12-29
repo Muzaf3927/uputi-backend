@@ -58,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/trips/{trip}', [TripController::class, 'destroy']); //ок
     // 8. Искать поездку
     Route::get('/trips/search', [TripController::class, 'search']);
+    // 8. Искать пассажира
+    Route::get('/trips/search/passengers/for/driver', [TripController::class, 'searchPassengerOrders']);
 
 
 //Bookings - Броны

@@ -11,12 +11,17 @@ class Trip extends Model
 
     protected $fillable = [
         'user_id',
+
         'from_lat',
         'from_lng',
         'from_address',
+        'from_address_normalized', // ✅ ДОБАВИТЬ
+
         'to_lat',
         'to_lng',
         'to_address',
+        'to_address_normalized',   // ✅ ДОБАВИТЬ
+
         'status',
         'role',
         'date',
@@ -26,6 +31,7 @@ class Trip extends Model
         'comment',
         'pochta',
     ];
+
 
     public function user()
     {
