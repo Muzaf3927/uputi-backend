@@ -39,4 +39,8 @@ return [
         'bot_name' => env('TELEGRAM_BOT_NAME'),
     ],
 
+    'mapbox' => [
+        'token' => env('MAPBOX_TOKEN'),
+    ],
+
 ];

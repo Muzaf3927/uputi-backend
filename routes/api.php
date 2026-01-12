@@ -11,6 +11,7 @@ use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\TelegramConnectController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\AddressController;
 
 Route::get('/test', function () {
     return 'test';
@@ -33,6 +34,8 @@ Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/telegram/connect', [TelegramConnectController::class, 'connect']);
+
+    Route::post('/geocode/reverse', [AddressController::class, 'addressReverse']);
 
     Route::get('/user', [UserController::class, 'me']); //Получения данных пользователя
     Route::post('/user', [UserController::class, 'update']);
