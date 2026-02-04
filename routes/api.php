@@ -51,7 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 5. Все активные поездки для водителй (по городу)
     Route::get('/trips/active', [TripController::class, 'activeTrips']); //ок
-    // 5. Все активные поездки для пассажиров (межгород)
+    // 5. Все активные поездки для пассажиров
     Route::get('/trips/for/passenger/active', [TripController::class, 'activeTripsForPassengers']);
     // 6. завершить поездку пассажиров для водителей
     Route::put('/trips/{trip}/completed', [TripController::class, 'completed']);
@@ -59,10 +59,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/trips/{trip}/completedIntercity', [TripController::class, 'completedIntercity']);
     // 7. Удалить поездку
     Route::delete('/trips/{trip}', [TripController::class, 'destroy']); //ок
-    // 8. Искать поездку
-    Route::get('/trips/search', [TripController::class, 'search']);
-    // 8. Искать пассажира
-    Route::get('/trips/search/passengers/for/driver', [TripController::class, 'searchPassengerOrders']);
+    // 8. Искать поездку для пассажиров по селект
+    Route::get('/trips/address/search', [TripController::class, 'searchByAddress']);
+    // 8. Искать поездку для пассажиров по
+    Route::get('/trips/location/search', [TripController::class, 'searchByUserLocation']);
+    // 8. Искать пассажира по селект
+    Route::get('/trips/passengers/address/search', [TripController::class, 'searchPassengerByAddress']);
+    // 8. Искать пассажира по место
+    Route::get('/trips/passengers/location/search', [TripController::class, 'searchPassengerByLocation']);
 
 
 //Bookings - Броны

@@ -48,6 +48,11 @@ class User extends Authenticatable
         return $this->hasMany(Trip::class);
     }
 
+    public function gifts()
+    {
+        return $this->hasMany(UserGift::class);
+    }
+
 
 
 

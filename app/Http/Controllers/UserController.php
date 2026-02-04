@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\UserGift;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -33,15 +35,53 @@ class UserController extends Controller
         ]);
     }
 
+//    public function updateRole(Request $request)
+//    {
+//        $validated = $request->validate([
+//            'role' => 'required|in:passenger,driver',
+//        ]);
+//
+//        $request->user()->update([
+//            'role' => $validated['role'],
+//        ]);
+//
+//
+//        return response()->json([
+//            'message' => 'Role updated successfully',
+//            'role' => $validated['role'],
+//        ]);
+//    }
     public function updateRole(Request $request)
     {
         $validated = $request->validate([
             'role' => 'required|in:passenger,driver',
         ]);
 
-        $request->user()->update([
-            'role' => $validated['role'],
-        ]);
+        $user = $request->user();
+
+        DB::transaction(function () use ($user, $validated) {
+
+            if ($validated['role'] === 'driver' && $user->role !== 'driver') {
+
+                $alreadyGiven = UserGift::where('user_id', $user->id)
+                    ->where('type', 'driver_welcome_bonus')
+                    ->exists();
+
+                if (!$alreadyGiven) {
+                    $user->increment('balance', 50000);
+
+                    UserGift::create([
+                        'user_id' => $user->id,
+                        'type'    => 'driver_welcome_bonus',
+                        'amount'  => 50000,
+                    ]);
+                }
+            }
+
+            $user->update([
+                'role' => $validated['role'],
+            ]);
+        });
 
         return response()->json([
             'message' => 'Role updated successfully',

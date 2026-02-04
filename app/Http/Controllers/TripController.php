@@ -133,105 +133,44 @@ class TripController extends Controller
 
     public function activeTrips(Request $request)
     {
-        $data = $request->validate([
-            'lat'    => 'required|numeric',
-            'lng'    => 'required|numeric',
-            'radius' => 'nullable|numeric|max:50',
-        ]);
-
-        $lat = $data['lat'];
-        $lng = $data['lng'];
-        $radius = max(0.1, min($data['radius'] ?? 10, 50));
-
-        // bounding box
-        $latRange = $radius / 111;
-        $lngRange = $radius / (111 * cos(deg2rad($lat)));
-
-        // формула расстояния
-        $haversine = "
-        (6371 * acos(
-            cos(radians(?)) *
-            cos(radians(from_lat)) *
-            cos(radians(from_lng) - radians(?)) +
-            sin(radians(?)) *
-            sin(radians(from_lat))
-        ))
-    ";
-        return Trip::query()
-            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
-            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
-
-            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
-
-            ->select('trips.*')
-            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
-
+        $trips = Trip::query()
             ->where('status', 'active')
-            ->where('role', '!=', 'driver')
-
-            ->orderBy('distance')
+            ->where('role', 'passenger') // заказы пассажиров
             ->with('user:id,name,avatar,rating,rating_count')
-            ->limit(200)
-            ->get();
+            ->orderBy('date')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
     }
 
 
-
-//    public function activeTripsForPassengers(Request $request)
-//    {
-//        return Trip::where('role', 'driver')
-//            ->where('status', '!=', 'completed')
-//            ->where('seats', '>', 0)
-//            ->with(['user.car'])
-//            ->latest()
-//            ->paginate(10);
-//    }
     public function activeTripsForPassengers(Request $request)
     {
-        $data = $request->validate([
-            'lat'    => 'required|numeric',
-            'lng'    => 'required|numeric',
-            'radius' => 'nullable|numeric|max:50', // км
-        ]);
-
-        $lat = $data['lat'];
-        $lng = $data['lng'];
-        $radius = max(0.5, min($data['radius'] ?? 10, 50));
-
-        // bounding box
-        $latRange = $radius / 111;
-        $lngRange = $radius / (111 * cos(deg2rad($lat)));
-
-        // формула расстояния (Haversine)
-        $haversine = "
-        (6371 * acos(
-            cos(radians(?)) *
-            cos(radians(from_lat)) *
-            cos(radians(from_lng) - radians(?)) +
-            sin(radians(?)) *
-            sin(radians(from_lat))
-        ))
-    ";
-
-        return Trip::query()
+        $trips = Trip::query()
             ->where('role', 'driver')
-            ->where('status', '!=','completed')
+            ->where('status', 'active')
             ->where('seats', '>', 0)
-
-            // быстрый фильтр
-            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
-            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
-
-            // точный радиус
-            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
-
-            ->select('trips.*')
-            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
-
             ->with(['user.car'])
-            ->orderBy('distance')
-            ->limit(200)
-            ->get();
+            ->orderBy('date')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
     }
 
     /**
@@ -245,6 +184,17 @@ class TripController extends Controller
             ->where('user_id', $driver->id)
             ->where('role', 'driver')
             ->first();
+
+        $price = $trip->amount;
+
+            // комиссия 10%
+        $commission = $price * 0.10;
+
+            // новый баланс водителя
+        $driver->balance -= $commission;
+
+            // если нужно сохранить
+        $driver->save();
 
         abort_if(!$driverBooking, 403);
 
@@ -292,7 +242,7 @@ class TripController extends Controller
         abort_if($trip->user_id !== $driver->id, 403);
         abort_if($trip->status === 'completed', 422);
 
-        DB::transaction(function () use ($trip) {
+        DB::transaction(function () use ($trip, $driver) {
             DB::table('trips')
                 ->where('id', $trip->id)
                 ->update(['status' => 'completed']);
@@ -301,6 +251,16 @@ class TripController extends Controller
                 ->where('trip_id', $trip->id)
                 ->where('status', 'in_progress')
                 ->update(['status' => 'completed']);
+
+            $totalAmount = $trip->bookings()
+                ->where('status', 'completed')
+                ->sum('amount'); // например 3 * 10000 = 30000
+
+            // комиссия 10%
+            $commission = $totalAmount * 0.10;
+
+            // списываем с баланса водителя
+            $driver->decrement('balance', $commission);
         });
 
         $trip->refresh();
@@ -377,53 +337,114 @@ class TripController extends Controller
         return response()->json(['message' => 'Trip deleted']);
     }
 
-    /**
-     * GET /api/trips/search
-     */
-    public function search(Request $request)
+
+    public function searchByAddress(Request $request)
     {
         $data = $request->validate([
-            'from' => 'nullable|string|min:1',
-            'to'   => 'nullable|string|min:1',
+            'from' => 'nullable|string',
+            'to'   => 'nullable|string',
             'date' => 'nullable|date',
         ]);
 
         $query = Trip::query()
             ->where('role', 'driver')
             ->where('status', 'active')
-            ->with(['bookings.user']);
+            ->where('seats', '>', 0)
+            ->with(['user.car']);
 
-        // FROM
         if (!empty($data['from'])) {
-            $from = $this->normalize($data['from']);
-
-            $query->where(
-                'from_address_normalized',
-                'LIKE',
-                "%{$from}%"
-            );
+            $query->where('from_address', $data['from']);
         }
 
         if (!empty($data['to'])) {
-            $to = $this->normalize($data['to']);
-
-            $query->where(
-                'to_address_normalized',
-                'LIKE',
-                "%{$to}%"
-            );
+            $query->where('to_address', $data['to']);
         }
 
-        // DATE
+        // 👇 НЕ обязательно
         if (!empty($data['date'])) {
             $query->whereDate('date', $data['date']);
         }
 
-        return $query->latest()->get();
+        $trips = $query
+            ->orderBy('date')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
     }
 
 
-    public function searchPassengerOrders(Request $request)
+    public function searchByUserLocation(Request $request)
+    {
+        $data = $request->validate([
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+        ]);
+
+        $lat = $data['lat'];
+        $lng = $data['lng'];
+        $radius = 20; // км
+
+        // bounding box
+        $latRange = $radius / 111;
+        $lngRange = $radius / (111 * cos(deg2rad($lat)));
+
+        // формула Haversine
+        $haversine = "
+        6371 * acos(
+            cos(radians(?))
+            * cos(radians(from_lat))
+            * cos(radians(from_lng) - radians(?))
+            + sin(radians(?))
+            * sin(radians(from_lat))
+        )
+    ";
+
+        $trips = Trip::query()
+            ->where('role', 'driver')
+            ->where('status', 'active')
+            ->where('seats', '>', 0)
+
+            // только поездки с координатами
+            ->whereNotNull('from_lat')
+            ->whereNotNull('from_lng')
+
+            // быстрый фильтр
+            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
+            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
+
+            // точный радиус
+            ->select('trips.*')
+            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
+
+            // 👇 ВАЖНО
+            ->with(['user.car'])
+
+            ->orderBy('distance')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
+    }
+
+
+
+    public function searchPassengerByAddress(Request $request)
     {
         $data = $request->validate([
             'from' => 'nullable|string|min:1',
@@ -434,35 +455,89 @@ class TripController extends Controller
         $query = Trip::query()
             ->where('role', 'passenger')
             ->where('status', 'active')
-            ->with(['user']); // пассажир (кто создал заказ)
+            ->with(['user']);
 
-        // FROM
         if (!empty($data['from'])) {
-            $from = $this->normalize($data['from']);
-
-            $query->where(
-                'from_address_normalized',
-                'LIKE',
-                "%{$from}%"
-            );
+            $query->where('from_address', $data['from']);
         }
 
         if (!empty($data['to'])) {
-            $to = $this->normalize($data['to']);
-
-            $query->where(
-                'to_address_normalized',
-                'LIKE',
-                "%{$to}%"
-            );
+            $query->where('to_address', $data['to']);
         }
 
-        // DATE
         if (!empty($data['date'])) {
             $query->whereDate('date', $data['date']);
         }
 
-        return $query->latest()->get();
+        $trips = $query
+            ->orderBy('date')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
     }
+
+    public function searchPassengerByLocation(Request $request)
+    {
+        $data = $request->validate([
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+        ]);
+
+        $lat = $data['lat'];
+        $lng = $data['lng'];
+        $radius = 20; // км
+
+        $latRange = $radius / 111;
+        $lngRange = $radius / (111 * cos(deg2rad($lat)));
+
+        $haversine = "
+        6371 * acos(
+            cos(radians(?))
+            * cos(radians(from_lat))
+            * cos(radians(from_lng) - radians(?))
+            + sin(radians(?))
+            * sin(radians(from_lat))
+        )
+    ";
+
+        $trips = Trip::query()
+            ->where('role', 'passenger')
+            ->where('status', 'active')
+            ->whereNotNull('from_lat')
+            ->whereNotNull('from_lng')
+
+            // быстрый отсев
+            ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
+            ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
+
+            // точный радиус
+            ->select('trips.*')
+            ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+            ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
+
+            ->with(['user']) // пассажир
+            ->orderBy('distance')
+            ->paginate(10);
+
+        return response()->json([
+            'items' => $trips->items(),
+            'pagination' => [
+                'current'  => $trips->currentPage(),
+                'previous' => $trips->previousPageUrl(),
+                'next'     => $trips->nextPageUrl(),
+                'total'    => $trips->total(),
+            ],
+        ]);
+    }
+
+
 
 }
