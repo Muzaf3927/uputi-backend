@@ -12,6 +12,7 @@ use App\Http\Controllers\TelegramConnectController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\IwonController;
 
 Route::get('/test', function () {
     return 'test';
@@ -19,6 +20,9 @@ Route::get('/test', function () {
 
 
 Route::post('count/download', [DownloadController::class, 'store']);
+
+//iwon
+Route::post('/callback', [IwonController::class, 'callback']);
 
 Route::post('/auth/start', [AuthController::class, 'start'])->middleware('sms.throttle');
 Route::post('/auth/verify', [AuthController::class, 'verify']);
