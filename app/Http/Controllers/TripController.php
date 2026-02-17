@@ -107,7 +107,7 @@ class TripController extends Controller
         return Trip::where('user_id', $user->id)
             ->where('role', 'driver')
             ->where('status', '!=', 'completed')
-            ->with(['bookings.user', 'user.car'])
+            ->with(['bookings.user'])
             ->latest()
             ->get();
 
