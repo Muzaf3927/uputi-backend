@@ -243,24 +243,22 @@ class TripController extends Controller
         abort_if($trip->status === 'completed', 422);
 
         DB::transaction(function () use ($trip, $driver) {
-            DB::table('trips')
-                ->where('id', $trip->id)
-                ->update(['status' => 'completed']);
 
-            DB::table('bookings')
-                ->where('trip_id', $trip->id)
+            $trip->update(['status' => 'completed']);
+
+            $trip->bookings()
                 ->where('status', 'in_progress')
                 ->update(['status' => 'completed']);
 
             $totalAmount = $trip->bookings()
                 ->where('status', 'completed')
-                ->sum('amount'); // например 3 * 10000 = 30000
+                ->sum(DB::raw('offered_price * seats'));
 
-            // комиссия 10%
-            $commission = $totalAmount * 0.10;
+            $commission = round($totalAmount * 0.10, 2);
 
-            // списываем с баланса водителя
-            $driver->decrement('balance', $commission);
+            if ($commission > 0) {
+                $driver->decrement('balance', $commission);
+            }
         });
 
         $trip->refresh();
