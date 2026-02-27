@@ -26,54 +26,59 @@ class BookingController extends Controller
      */
     public function store(Request $request)
     {
-        $user = $request->user();
+        $driver = $request->user();
 
         $data = $request->validate([
             'trip_id' => 'required|exists:trips,id',
         ]);
 
-        $trip = Trip::findOrFail($data['trip_id']);
+        DB::transaction(function () use ($data, $driver, &$booking) {
 
-        abort_if($trip->user_id === $user->id, 422);
+            $trip = Trip::lockForUpdate()->findOrFail($data['trip_id']);
+            // 🔒 блокируем строку чтобы два водителя не взяли заказ
 
-        $booking = Booking::create([
-            'trip_id' => $trip->id,
-            'user_id' => $user->id,
-            'seats'   => $trip->seats,
-            'role'    => $user->role, // driver
-            'status'  => 'in_progress',
-        ]);
+            abort_if($trip->user_id === $driver->id, 422, 'Cannot take your own trip');
+            abort_if($trip->status !== 'active', 422, 'Trip already taken');
 
-        $trip->update(['status' => 'in_progress']);
+            // проверяем что водитель ещё не назначен
+            $alreadyTaken = $trip->bookings()
+                ->where('role', 'driver')
+                ->exists();
 
-        // 👤 пассажир — владелец trip
+            abort_if($alreadyTaken, 422, 'Driver already assigned');
+
+            $booking = Booking::create([
+                'trip_id'       => $trip->id,
+                'user_id'       => $driver->id,
+                'seats'         => $trip->seats,
+                'role'          => 'driver',
+                'offered_price' => $trip->amount, // ✅ фиксируем цену
+                'status'        => 'in_progress',
+            ]);
+
+            $trip->update(['status' => 'in_progress']);
+        });
+
+        // уведомления уже можно после transaction
+        $trip = $booking->trip;
         $passenger = User::find($trip->user_id);
-        $driver = $user;
 
         $from = AddressHelper::short($trip->from_address);
         $to   = AddressHelper::short($trip->to_address);
 
-        // 📝 сообщения
         $messagePassenger =
-            "{$from} → {$to}\n" .
-            "Haydovchi topildi\n" .
-            "Водитель нашелся";
+            "{$from} → {$to}\nHaydovchi topildi\nВодитель нашелся";
 
         $messageDriver =
-            "{$from} → {$to}\n" .
-            "Yo‘lovchi sizni kutmoqda\n" .
-            "Пассажир ждет вас";
+            "{$from} → {$to}\nYo‘lovchi sizni kutmoqda\nПассажир ждет вас";
 
-
-        // 🔔 уведомляем пассажира
-        if ($passenger && $passenger->telegram_chat_id) {
+        if ($passenger?->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 $messagePassenger
             ));
         }
 
-        // 🔔 уведомляем водителя
         if ($driver->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
                 $driver->telegram_chat_id,
@@ -103,7 +108,7 @@ class BookingController extends Controller
             ->where('role', 'driver')
             ->firstOrFail();
 
-        $offeredPrice = $data['offered_price'] ?? $trip->ammount;
+        $offeredPrice = $data['offered_price'] ?? $trip->amount;
 
         // ❌ если мест не хватает (ТОЛЬКО если сразу бронируем)
         if (!$offeredPrice) {

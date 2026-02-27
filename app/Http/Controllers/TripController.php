@@ -177,63 +177,56 @@ class TripController extends Controller
      * 6. завершить поездку
      */
     public function completed(Request $request, Trip $trip)
-    {
-        $driver = $request->user();
+{
+    $driver = $request->user();
+
+    abort_if($trip->status === 'completed', 422);
+
+    DB::transaction(function () use ($trip, $driver) {
 
         $driverBooking = $trip->bookings()
             ->where('user_id', $driver->id)
             ->where('role', 'driver')
             ->first();
 
-        $price = $trip->amount;
-
-            // комиссия 10%
-        $commission = $price * 0.10;
-
-            // новый баланс водителя
-        $driver->balance -= $commission;
-
-            // если нужно сохранить
-        $driver->save();
-
         abort_if(!$driverBooking, 403);
 
-        abort_if($trip->status === 'completed', 422);
+        $price = $driverBooking->offered_price;
 
-        DB::transaction(function () use ($trip) {
+        $commission = round($price * 0.10, 2);
 
-            $trip->update([
-                'status' => 'completed',
-            ]);
-
-            $trip->bookings()
-                ->where('status', 'in_progress')
-                ->update(['status' => 'completed']);
-        });
-
-        $passenger = User::where('id', $trip->user_id)
-            ->first();
-
-
-        $from = AddressHelper::short($trip->from_address);
-        $to   = AddressHelper::short($trip->to_address);
-
-        $messagePassenger =
-            "{$from} → {$to}\n" .
-            "✅ Sizning zakazingiz yakunlandi!\n" .
-            "✅ Ваша поездка завершилась.";
-
-
-        if ($passenger && $passenger->telegram_chat_id) {
-            dispatch(new SendTelegramNotificationJob(
-                $passenger->telegram_chat_id,
-                $messagePassenger
-            ));
+        if ($commission > 0) {
+            $driver->decrement('balance', $commission);
         }
 
+        $trip->update([
+            'status' => 'completed',
+        ]);
 
-        return response()->json($trip);
+        $trip->bookings()
+            ->where('status', 'in_progress')
+            ->update(['status' => 'completed']);
+    });
+
+    $passenger = User::find($trip->user_id);
+
+    $from = AddressHelper::short($trip->from_address);
+    $to   = AddressHelper::short($trip->to_address);
+
+    $messagePassenger =
+        "{$from} → {$to}\n" .
+        "✅ Sizning zakazingiz yakunlandi!\n" .
+        "✅ Ваша поездка завершилась.";
+
+    if ($passenger && $passenger->telegram_chat_id) {
+        dispatch(new SendTelegramNotificationJob(
+            $passenger->telegram_chat_id,
+            $messagePassenger
+        ));
     }
+
+    return response()->json($trip->fresh());
+}
 
     public function completedIntercity(Request $request, Trip $trip)
     {
