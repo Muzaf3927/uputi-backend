@@ -90,13 +90,18 @@ class TripController extends Controller
             'ы'=>'i','э'=>'e','ю'=>'yu','я'=>'ya',
 
             // узб
-            'қ'=>'q','ғ'=>"g'",'ў'=>"o'",'ҳ'=>'h',
-
-            // лат → единый вид
-            'x' => 'x', // buxara → bukhara
+            'қ'=>'q','ғ'=>'g','ў'=>'o','ҳ'=>'h',
         ];
 
-        return strtr($value, $map);
+        $value = strtr($value, $map);
+
+        // удаляем всё лишнее: ‘ ' ` - и т.д.
+        $value = preg_replace('/[^a-z0-9\s]/u', '', $value);
+
+        // убираем двойные пробелы
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
     }
 
 
@@ -343,21 +348,28 @@ class TripController extends Controller
             ->where('seats', '>', 0)
             ->with(['user.car']);
 
+        // 🔎 поиск ОТКУДА
         if (!empty($data['from'])) {
-            $query->where('from_address', $data['from']);
+            $normalizedFrom = $this->normalize($data['from']);
+
+            $query->where('from_address_normalized', 'LIKE', "%{$normalizedFrom}%");
         }
 
+        // 🔎 поиск КУДА
         if (!empty($data['to'])) {
-            $query->where('to_address', $data['to']);
+            $normalizedTo = $this->normalize($data['to']);
+
+            $query->where('to_address_normalized', 'LIKE', "%{$normalizedTo}%");
         }
 
-        // 👇 НЕ обязательно
+        // 📅 фильтр по дате (если передали)
         if (!empty($data['date'])) {
             $query->whereDate('date', $data['date']);
         }
 
         $trips = $query
             ->orderBy('date')
+            ->orderBy('time')
             ->paginate(10);
 
         return response()->json([
@@ -435,6 +447,7 @@ class TripController extends Controller
 
 
 
+
     public function searchPassengerByAddress(Request $request)
     {
         $data = $request->validate([
@@ -448,20 +461,28 @@ class TripController extends Controller
             ->where('status', 'active')
             ->with(['user']);
 
+        // 🔎 ОТКУДА
         if (!empty($data['from'])) {
-            $query->where('from_address', $data['from']);
+            $normalizedFrom = $this->normalize($data['from']);
+
+            $query->where('from_address_normalized', 'LIKE', "%{$normalizedFrom}%");
         }
 
+        // 🔎 КУДА
         if (!empty($data['to'])) {
-            $query->where('to_address', $data['to']);
+            $normalizedTo = $this->normalize($data['to']);
+
+            $query->where('to_address_normalized', 'LIKE', "%{$normalizedTo}%");
         }
 
+        // 📅 дата (если указана)
         if (!empty($data['date'])) {
             $query->whereDate('date', $data['date']);
         }
 
         $trips = $query
             ->orderBy('date')
+            ->orderBy('time')
             ->paginate(10);
 
         return response()->json([
@@ -474,7 +495,6 @@ class TripController extends Controller
             ],
         ]);
     }
-
     public function searchPassengerByLocation(Request $request)
     {
         $data = $request->validate([
