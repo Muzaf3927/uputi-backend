@@ -102,16 +102,24 @@ class BookingController extends Controller
 
         $seats = $data['seats'] ?? 1;
 
-
         // поездка водителя
         $trip = Trip::where('id', $data['trip_id'])
             ->where('role', 'driver')
             ->firstOrFail();
 
-        $offeredPrice = $data['offered_price'] ?? $trip->amount;
+        /**
+         * ❗ ВАЖНО:
+         * проверяем — было ли вообще поле offered_price в запросе
+         * (это значит пользователь торгуется)
+         */
+        $hasOffer = array_key_exists('offered_price', $data) && !is_null($data['offered_price']);
 
-        // ❌ если мест не хватает (ТОЛЬКО если сразу бронируем)
-        if (!$offeredPrice) {
+        // если торг — берём цену пользователя
+        // если нет — используем цену поездки
+        $offeredPrice = $hasOffer ? $data['offered_price'] : $trip->amount;
+
+        // ❌ если обычная бронь — проверяем места
+        if (!$hasOffer) {
             abort_if($trip->seats < $seats, 422, 'Not enough seats');
         }
 
@@ -129,6 +137,7 @@ class BookingController extends Controller
             $passenger,
             $seats,
             $offeredPrice,
+            $hasOffer,
             &$booking
         ) {
             $booking = Booking::create([
@@ -136,12 +145,12 @@ class BookingController extends Controller
                 'user_id'       => $passenger->id,
                 'seats'         => $seats,
                 'role'          => 'passenger',
-                'status'        => $offeredPrice ? 'requested' : 'in_progress',
+                'status'        => $hasOffer ? 'requested' : 'in_progress', // ✅ теперь правильно
                 'offered_price' => $offeredPrice,
             ]);
 
             // уменьшаем места ТОЛЬКО при прямой брони
-            if (!$offeredPrice) {
+            if (!$hasOffer) {
                 $trip->decrement('seats', $seats);
             }
         });
@@ -153,7 +162,7 @@ class BookingController extends Controller
         $to   = AddressHelper::short($trip->to_address);
 
         // 📝 сообщения
-        if ($offeredPrice) {
+        if ($hasOffer) {
 
             // 💰 предложение цены
             $messageDriver =
@@ -175,7 +184,7 @@ class BookingController extends Controller
                 "Новый пассажир забронировал {$seats} место, можете посмотреть в своем заказе";
 
             $messagePassenger =
-                "{$from} → {$to}\n" . "{$seats} ta joy bron qildingiz!\n" .
+                "{$from} → {$to}\n{$seats} ta joy bron qildingiz!\n" .
                 "Вы забронировали {$seats} место!";
         }
 
