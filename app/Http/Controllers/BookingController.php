@@ -103,7 +103,7 @@ class BookingController extends Controller
             ->where('role', 'driver')
             ->firstOrFail();
 
-        $offeredPrice = $data['offered_price'] ?? $trip->offered_price;
+        $offeredPrice = $data['offered_price'] ?? $trip->ammount;
 
         // ❌ если мест не хватает (ТОЛЬКО если сразу бронируем)
         if (!$offeredPrice) {
