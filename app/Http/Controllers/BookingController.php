@@ -96,12 +96,14 @@ class BookingController extends Controller
         ]);
 
         $seats = $data['seats'] ?? 1;
-        $offeredPrice = $data['offered_price'] ?? null;
+
 
         // поездка водителя
         $trip = Trip::where('id', $data['trip_id'])
             ->where('role', 'driver')
             ->firstOrFail();
+
+        $offeredPrice = $data['offered_price'] ?? $trip->offered_price;
 
         // ❌ если мест не хватает (ТОЛЬКО если сразу бронируем)
         if (!$offeredPrice) {
