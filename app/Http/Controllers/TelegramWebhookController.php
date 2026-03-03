@@ -11,31 +11,45 @@ class TelegramWebhookController extends Controller
     {
         $update = $request->all();
 
-        // Если это не сообщение, выходим
+        // Если это не сообщение — выходим
         if (!isset($update['message'])) {
             return response()->json(['ok' => true]);
         }
 
         $message = $update['message'];
-        $chatId  = $message['chat']['id'];
-        $text    = $message['text'];
+
+        // Проверяем наличие chat.id
+        if (!isset($message['chat']['id'])) {
+            return response()->json(['ok' => true]);
+        }
+
+        $chatId = $message['chat']['id'];
+
+        // 🔥 Если нет текста — просто выходим
+        if (!isset($message['text'])) {
+            return response()->json(['ok' => true]);
+        }
+
+        $text = $message['text'];
 
         // Проверяем команду /start user_X
         if (str_starts_with($text, '/start user_')) {
-            $userId = (int) str_replace('/start user_', '', $text);
 
+            $userId = (int) str_replace('/start user_', '', $text);
             $user = User::find($userId);
 
             if ($user) {
-                // сохраняем chat_id в базу
+
+                // сохраняем chat_id
                 $user->telegram_chat_id = $chatId;
                 $user->save();
 
-                // отправляем приветственное сообщения
-                $this->sendMessage($chatId, "🔔 Tabriklaymiz! Endi barcha yo'lovchi yoki haydovchi so'rovlari shu yerda aks etadi.\n\n" .
+                // отправляем приветственное сообщение
+                $this->sendMessage(
+                    $chatId,
+                    "🔔 Tabriklaymiz! Endi barcha yo'lovchi yoki haydovchi so'rovlari shu yerda aks etadi.\n\n" .
                     "🔔 Поздравляем! Теперь все запросы пассажиров и водителей будут отображаться здесь."
                 );
-
             }
         }
 
@@ -50,4 +64,3 @@ class TelegramWebhookController extends Controller
         file_get_contents($url . "?chat_id={$chatId}&text=" . urlencode($text));
     }
 }
-
