@@ -45,6 +45,10 @@ Route::prefix('admin')->group(function () {
         Route::post('/send-to-all', [AdminPanelController::class, 'sendMessageAll']);
         Route::post('/send-to-user', [AdminPanelController::class, 'sendToUser']);
 
+
+        // Выйти
+        Route::post('/logout', [AdminAuthController::class, 'logout']);
+
     });
 
 });

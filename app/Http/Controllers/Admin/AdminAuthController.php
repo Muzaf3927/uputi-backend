@@ -72,4 +72,21 @@ class AdminAuthController extends Controller
             'admin' => $admin,
         ]);
     }
+
+    public function logout(Request $request)
+    {
+        $admin = $request->user('admin');
+
+        if (!$admin) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $admin->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ]);
+    }
 }
