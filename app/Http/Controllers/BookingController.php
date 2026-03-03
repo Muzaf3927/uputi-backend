@@ -40,6 +40,15 @@ class BookingController extends Controller
             abort_if($trip->user_id === $driver->id, 422, 'Cannot take your own trip');
             abort_if($trip->status !== 'active', 422, 'Trip already taken');
 
+            // 🔥 Проверка баланса водителя
+            $commission = round(($trip->amount ?? 0) * 0.08, 2);
+
+            if ($driver->balance < $commission) {
+                return response()->json([
+                    'balance_sufficient' => false
+                ], 422);
+            }
+
             // проверяем что водитель ещё не назначен
             $alreadyTaken = $trip->bookings()
                 ->where('role', 'driver')
@@ -52,14 +61,14 @@ class BookingController extends Controller
                 'user_id'       => $driver->id,
                 'seats'         => $trip->seats,
                 'role'          => 'driver',
-                'offered_price' => $trip->amount, // ✅ фиксируем цену
+                'offered_price' => $trip->amount, // фиксируем цену
                 'status'        => 'in_progress',
             ]);
 
             $trip->update(['status' => 'in_progress']);
         });
 
-        // уведомления уже можно после transaction
+        // уведомления после transaction
         $trip = $booking->trip;
         $passenger = User::find($trip->user_id);
 

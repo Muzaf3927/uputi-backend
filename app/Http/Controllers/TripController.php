@@ -38,10 +38,33 @@ class TripController extends Controller
             'to_address' => 'nullable|string',
             'date' => 'required|date',
             'time' => 'required',
-            'amount' => 'nullable|integer',
+            'amount' => 'nullable|integer|min:0',
             'seats' => 'nullable|integer|min:1',
             'comment' => 'nullable|string',
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Проверка баланса (ТОЛЬКО для водителя)
+        |--------------------------------------------------------------------------
+        */
+        if ($user->role === 'driver') {
+
+            $amount = $data['amount'] ?? 0;
+            $seats  = $data['seats'] ?? 1;
+
+            // Максимальный возможный оборот
+            $maxTotal = $amount * $seats;
+
+            // 8% комиссия
+            $maxCommission = round($maxTotal * 0.08, 2);
+
+            if ($user->balance < $maxCommission) {
+                return response()->json([
+                    'has_balance' => false
+                ], 422);
+            }
+        }
 
         $trip = Trip::create([
             'user_id' => $user->id,
@@ -52,7 +75,7 @@ class TripController extends Controller
             'from_address' => $data['from_address'] ?? null,
             'to_address'   => $data['to_address'] ?? null,
 
-            // НОРМАЛИЗОВАННЫЕ адреса
+            // нормализованные адреса
             'from_address_normalized' => !empty($data['from_address'])
                 ? $this->normalize($data['from_address'])
                 : null,
@@ -61,11 +84,13 @@ class TripController extends Controller
                 ? $this->normalize($data['to_address'])
                 : null,
 
-            // остальные поля
+            // координаты
             'from_lat' => $data['from_lat'] ?? null,
             'from_lng' => $data['from_lng'] ?? null,
             'to_lat'   => $data['to_lat'] ?? null,
             'to_lng'   => $data['to_lng'] ?? null,
+
+            // основные поля
             'date'     => $data['date'],
             'time'     => $data['time'],
             'amount'   => $data['amount'] ?? null,
@@ -182,56 +207,56 @@ class TripController extends Controller
      * 6. завершить поездку
      */
     public function completed(Request $request, Trip $trip)
-{
-    $driver = $request->user();
+    {
+        $driver = $request->user();
 
-    abort_if($trip->status === 'completed', 422);
+        abort_if($trip->status === 'completed', 422);
+        abort_if($trip->role !== 'passenger', 422, 'Invalid trip type');
 
-    DB::transaction(function () use ($trip, $driver) {
+        DB::transaction(function () use ($trip, $driver) {
 
-        $driverBooking = $trip->bookings()
-            ->where('user_id', $driver->id)
-            ->where('role', 'driver')
-            ->first();
+            $driverBooking = $trip->bookings()
+                ->where('user_id', $driver->id)
+                ->where('role', 'driver')
+                ->first();
 
-        abort_if(!$driverBooking, 403);
+            abort_if(!$driverBooking, 403);
 
-        $price = $driverBooking->offered_price;
+            // Берём сумму из trip (она же записана в booking)
+            $totalAmount = $trip->amount ?? 0;
 
-        $commission = round($price * 0.10, 2);
+            $commission = round($totalAmount * 0.08, 2);
 
-        if ($commission > 0) {
-            $driver->decrement('balance', $commission);
+            if ($commission > 0) {
+                $driver->decrement('balance', $commission);
+            }
+
+            $trip->update(['status' => 'completed']);
+
+            $trip->bookings()
+                ->where('status', 'in_progress')
+                ->update(['status' => 'completed']);
+        });
+
+        $passenger = User::find($trip->user_id);
+
+        $from = AddressHelper::short($trip->from_address);
+        $to   = AddressHelper::short($trip->to_address);
+
+        $messagePassenger =
+            "{$from} → {$to}\n" .
+            "✅ Sizning zakazingiz yakunlandi!\n" .
+            "✅ Ваша поездка завершилась.";
+
+        if ($passenger?->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $passenger->telegram_chat_id,
+                $messagePassenger
+            ));
         }
 
-        $trip->update([
-            'status' => 'completed',
-        ]);
-
-        $trip->bookings()
-            ->where('status', 'in_progress')
-            ->update(['status' => 'completed']);
-    });
-
-    $passenger = User::find($trip->user_id);
-
-    $from = AddressHelper::short($trip->from_address);
-    $to   = AddressHelper::short($trip->to_address);
-
-    $messagePassenger =
-        "{$from} → {$to}\n" .
-        "✅ Sizning zakazingiz yakunlandi!\n" .
-        "✅ Ваша поездка завершилась.";
-
-    if ($passenger && $passenger->telegram_chat_id) {
-        dispatch(new SendTelegramNotificationJob(
-            $passenger->telegram_chat_id,
-            $messagePassenger
-        ));
+        return response()->json($trip->fresh());
     }
-
-    return response()->json($trip->fresh());
-}
 
     public function completedIntercity(Request $request, Trip $trip)
     {
@@ -242,21 +267,23 @@ class TripController extends Controller
 
         DB::transaction(function () use ($trip, $driver) {
 
+            // 🔥 Считаем реальную сумму ДО обновления статусов
+            $totalAmount = $trip->bookings()
+                ->where('status', 'in_progress')
+                ->sum(DB::raw('offered_price * seats'));
+
+            $commission = round($totalAmount * 0.08, 2);
+
+            if ($commission > 0) {
+                $driver->decrement('balance', $commission);
+            }
+
+            // Обновляем статусы
             $trip->update(['status' => 'completed']);
 
             $trip->bookings()
                 ->where('status', 'in_progress')
                 ->update(['status' => 'completed']);
-
-            $totalAmount = $trip->bookings()
-                ->where('status', 'completed')
-                ->sum(DB::raw('offered_price * seats'));
-
-            $commission = round($totalAmount * 0.10, 2);
-
-            if ($commission > 0) {
-                $driver->decrement('balance', $commission);
-            }
         });
 
         $trip->refresh();
@@ -269,6 +296,7 @@ class TripController extends Controller
             "✅ Sizning zakazingiz yakunlandi!\n" .
             "✅ Ваша поездка завершилась.";
 
+        // уведомление водителю
         if ($driver->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
                 $driver->telegram_chat_id,
@@ -276,6 +304,7 @@ class TripController extends Controller
             ));
         }
 
+        // уведомление пассажирам
         $passengerChatIds = DB::table('bookings')
             ->join('users', 'users.id', '=', 'bookings.user_id')
             ->where('bookings.trip_id', $trip->id)
@@ -284,12 +313,8 @@ class TripController extends Controller
             ->pluck('users.telegram_chat_id');
 
         foreach ($passengerChatIds as $chatId) {
-            dispatch(new SendTelegramNotificationJob(
-                $chatId,
-                $message
-            ));
+            dispatch(new SendTelegramNotificationJob($chatId, $message));
         }
-
 
         return response()->json($trip);
     }
