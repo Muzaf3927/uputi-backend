@@ -1,22 +1,55 @@
 <?php
 
-use App\Http\Controllers\CarController;
-use App\Http\Controllers\TripController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AccountDeletionController;
+use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\Admin\AdminCommissionController;
+use App\Http\Controllers\Admin\AdminPanelController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\AccountDeletionController;
+use App\Http\Controllers\CarController;
 use App\Http\Controllers\DownloadController;
+use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\IwonController;
 use App\Http\Controllers\TelegramConnectController;
 use App\Http\Controllers\TelegramWebhookController;
-use App\Http\Controllers\HistoryController;
-use App\Http\Controllers\AddressController;
-use App\Http\Controllers\IwonController;
+use App\Http\Controllers\TripController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
+
 
 Route::get('/test', function () {
     return 'test';
 });
+
+
+Route::prefix('admin')->group(function () {
+
+    // 🔐 Авторизация
+    Route::post('/register', [AdminAuthController::class, 'register']);
+    Route::post('/login', [AdminAuthController::class, 'login']);
+
+    // 🔒 Защищённые только для админов
+    Route::middleware('auth:admin')->group(function () {
+
+        Route::prefix('commissions')->group(function () {
+            // 💰 Комиссии
+            Route::get('/', [AdminCommissionController::class, 'index']);
+            Route::get('/stats', [AdminCommissionController::class, 'stats']);
+        });
+
+        // 👤 Управление пользователями
+        Route::post('/balance', [AdminPanelController::class, 'updateBalance']);
+        Route::post('/role', [AdminPanelController::class, 'updateUserRole']);
+
+        Route::post('/send-to-all', [AdminPanelController::class, 'sendMessageAll']);
+        Route::post('/send-to-user', [AdminPanelController::class, 'sendToUser']);
+
+    });
+
+});
+
+
 
 
 Route::post('count/download', [DownloadController::class, 'store']);

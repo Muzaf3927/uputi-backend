@@ -16,6 +16,15 @@ class SendTelegramNotificationJob implements ShouldQueue
     public $chatId;
     public $text;
 
+    // 🔥 Максимум попыток
+    public $tries = 3;
+
+    // 🔥 Задержка между повторными попытками (в секундах)
+    public $backoff = 5;
+
+    // 🔥 Таймаут выполнения job (в секундах)
+    public $timeout = 30;
+
     public function __construct($chatId, $text)
     {
         $this->chatId = $chatId;
@@ -24,6 +33,9 @@ class SendTelegramNotificationJob implements ShouldQueue
 
     public function handle(TelegramService $telegram)
     {
+        // 🔥 Маленькая пауза для снижения rate limit Telegram
+        usleep(200000); // 0.2 секунды
+
         $telegram->sendMessage($this->chatId, $this->text);
     }
 }

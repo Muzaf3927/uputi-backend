@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendTelegramNotificationJob;
 use App\Helpers\AddressHelper;
+use App\Models\Commission;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\TripService;
@@ -222,13 +223,21 @@ class TripController extends Controller
 
             abort_if(!$driverBooking, 403);
 
-            // Берём сумму из trip (она же записана в booking)
             $totalAmount = $trip->amount ?? 0;
-
             $commission = round($totalAmount * 0.08, 2);
 
             if ($commission > 0) {
                 $driver->decrement('balance', $commission);
+
+                Commission::create([
+                    'trip_id' => $trip->id,
+                    'booking_id' => $driverBooking->id,
+                    'user_id' => $driver->id,
+                    'total_amount' => $totalAmount,
+                    'commission_percent' => 8,
+                    'commission_amount' => $commission,
+                    'type' => 'passenger_trip',
+                ]);
             }
 
             $trip->update(['status' => 'completed']);
@@ -267,7 +276,6 @@ class TripController extends Controller
 
         DB::transaction(function () use ($trip, $driver) {
 
-            // 🔥 Считаем реальную сумму ДО обновления статусов
             $totalAmount = $trip->bookings()
                 ->where('status', 'in_progress')
                 ->sum(DB::raw('offered_price * seats'));
@@ -276,9 +284,18 @@ class TripController extends Controller
 
             if ($commission > 0) {
                 $driver->decrement('balance', $commission);
+
+                Commission::create([
+                    'trip_id' => $trip->id,
+                    'booking_id' => null,
+                    'user_id' => $driver->id,
+                    'total_amount' => $totalAmount,
+                    'commission_percent' => 8,
+                    'commission_amount' => $commission,
+                    'type' => 'driver_trip',
+                ]);
             }
 
-            // Обновляем статусы
             $trip->update(['status' => 'completed']);
 
             $trip->bookings()
@@ -296,24 +313,11 @@ class TripController extends Controller
             "✅ Sizning zakazingiz yakunlandi!\n" .
             "✅ Ваша поездка завершилась.";
 
-        // уведомление водителю
         if ($driver->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
                 $driver->telegram_chat_id,
                 $message
             ));
-        }
-
-        // уведомление пассажирам
-        $passengerChatIds = DB::table('bookings')
-            ->join('users', 'users.id', '=', 'bookings.user_id')
-            ->where('bookings.trip_id', $trip->id)
-            ->where('bookings.role', 'passenger')
-            ->whereNotNull('users.telegram_chat_id')
-            ->pluck('users.telegram_chat_id');
-
-        foreach ($passengerChatIds as $chatId) {
-            dispatch(new SendTelegramNotificationJob($chatId, $message));
         }
 
         return response()->json($trip);
