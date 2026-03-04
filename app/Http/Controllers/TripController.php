@@ -533,7 +533,7 @@ class TripController extends Controller
 
         $lat = $data['lat'];
         $lng = $data['lng'];
-        $radius = 20; // км
+        $radius = 30; // км
 
         $latRange = $radius / 111;
         $lngRange = $radius / (111 * cos(deg2rad($lat)));
@@ -565,7 +565,7 @@ class TripController extends Controller
 
             ->with(['user']) // пассажир
             ->orderBy('distance')
-            ->paginate(10);
+            ->paginate(50);
 
         return response()->json([
             'items' => $trips->items(),
