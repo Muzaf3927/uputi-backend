@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendTelegramNotificationJob;
 use App\Helpers\AddressHelper;
 use App\Models\Commission;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\TripService;
@@ -224,7 +225,10 @@ class TripController extends Controller
             abort_if(!$driverBooking, 403);
 
             $totalAmount = $trip->amount ?? 0;
-            $commission = round($totalAmount * 0.08, 2);
+
+            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 8;
+
+            $commission = round($totalAmount * ($percent / 100), 2);
 
             if ($commission > 0) {
                 $driver->decrement('balance', $commission);
@@ -234,7 +238,7 @@ class TripController extends Controller
                     'booking_id' => $driverBooking->id,
                     'user_id' => $driver->id,
                     'total_amount' => $totalAmount,
-                    'commission_percent' => 8,
+                    'commission_percent' => $percent,
                     'commission_amount' => $commission,
                     'type' => 'passenger_trip',
                 ]);
@@ -280,7 +284,9 @@ class TripController extends Controller
                 ->where('status', 'in_progress')
                 ->sum(DB::raw('offered_price * seats'));
 
-            $commission = round($totalAmount * 0.08, 2);
+            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 8;
+
+            $commission = round($totalAmount * ($percent / 100), 2);
 
             if ($commission > 0) {
                 $driver->decrement('balance', $commission);
@@ -290,7 +296,7 @@ class TripController extends Controller
                     'booking_id' => null,
                     'user_id' => $driver->id,
                     'total_amount' => $totalAmount,
-                    'commission_percent' => 8,
+                    'commission_percent' => $percent,
                     'commission_amount' => $commission,
                     'type' => 'driver_trip',
                 ]);

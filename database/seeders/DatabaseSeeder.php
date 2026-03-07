@@ -4,15 +4,15 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
-use App\Models\Trip;
-use App\Models\Booking;
-use App\Models\Wallet;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            SettingSeeder::class,
+        ]);
+
         User::create([
             'name' => '3Passenger',
             'phone' => '123123123',
