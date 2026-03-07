@@ -111,86 +111,83 @@ class BookingController extends Controller
 
         $seats = $data['seats'] ?? 1;
 
-        // поездка водителя
-        $trip = Trip::where('id', $data['trip_id'])
-            ->where('role', 'driver')
-            ->firstOrFail();
-
-        /**
-         * ❗ ВАЖНО:
-         * проверяем — было ли вообще поле offered_price в запросе
-         * (это значит пользователь торгуется)
-         */
         $hasOffer = array_key_exists('offered_price', $data) && !is_null($data['offered_price']);
 
-        // если торг — берём цену пользователя
-        // если нет — используем цену поездки
-        $offeredPrice = $hasOffer ? $data['offered_price'] : $trip->amount;
-
-        // ❌ если обычная бронь — проверяем места
-        if (!$hasOffer) {
-            abort_if($trip->seats < $seats, 422, 'Not enough seats');
-        }
-
-        // ❌ повторная бронь
-        abort_if(
-            Booking::where('trip_id', $trip->id)
-                ->where('user_id', $passenger->id)
-                ->exists(),
-            403,
-            'You already booked this trip'
-        );
-
         DB::transaction(function () use (
-            $trip,
+            $data,
             $passenger,
             $seats,
-            $offeredPrice,
             $hasOffer,
             &$booking
         ) {
+
+            // 🔒 блокируем поездку
+            $trip = Trip::lockForUpdate()
+                ->where('id', $data['trip_id'])
+                ->where('role', 'driver')
+                ->firstOrFail();
+
+            // ❌ повторная бронь
+            abort_if(
+                Booking::where('trip_id', $trip->id)
+                    ->where('user_id', $passenger->id)
+                    ->exists(),
+                403,
+                'Siz bu zakazni bron qilgansiz'
+            );
+
+            // ❌ если обычная бронь — проверяем места
+            if (!$hasOffer) {
+                abort_if($trip->seats < $seats, 422, 'Joy yetarli emas');
+            }
+
+            // 💰 цена
+            if ($hasOffer) {
+                // пользователь может указать цену за всех
+                $pricePerSeat = $data['offered_price'] / $seats;
+            } else {
+                $pricePerSeat = $trip->amount;
+            }
+
             $booking = Booking::create([
                 'trip_id'       => $trip->id,
                 'user_id'       => $passenger->id,
                 'seats'         => $seats,
                 'role'          => 'passenger',
-                'status'        => $hasOffer ? 'requested' : 'in_progress', // ✅ теперь правильно
-                'offered_price' => $offeredPrice,
+                'status'        => $hasOffer ? 'requested' : 'in_progress',
+                'offered_price' => $pricePerSeat,
             ]);
 
-            // уменьшаем места ТОЛЬКО при прямой брони
+            // уменьшаем места только при прямой брони
             if (!$hasOffer) {
                 $trip->decrement('seats', $seats);
             }
         });
 
-        // 👤 водитель
+        $trip = $booking->trip;
         $driver = User::find($trip->user_id);
 
         $from = AddressHelper::short($trip->from_address);
         $to   = AddressHelper::short($trip->to_address);
 
-        // 📝 сообщения
         if ($hasOffer) {
 
-            // 💰 предложение цены
             $messageDriver =
                 "💰Yangi narx taklifi!\n" .
                 "{$from} → {$to}\n" .
-                "Yo‘lovchi {$seats} joy uchun {$offeredPrice} taklif qildi. Iltimos o'z zakazingizdan tasdiqlang yoki rad eting.\n" .
-                "Пассажир предлагает {$seats} за {$offeredPrice} место. Пожалуйста подтвердите или отмените в своем заказе.";
+                "Yo‘lovchi {$seats} joy uchun {$data['offered_price']} taklif qildi. Iltimos o'z zakazingizdan tasdiqlang yoki rad eting.\n" .
+                "Пассажир предлагает {$seats} за {$data['offered_price']} место. Пожалуйста подтвердите или отмените.";
 
             $messagePassenger =
                 "⏳Sizning taklifingiz junatildi. Haydovchi javobini kuting.\n" .
-                "Ваша предложения отправлена. Ждите ответ водителя";
+                "Ваше предложение отправлено. Ждите ответ водителя.";
 
         } else {
 
-            // ✅ обычная бронь
             $messageDriver =
                 "{$from} → {$to}\n" .
-                "Yangi yo‘lovchi {$seats} joy bron qildi, o'z zakazingizdan ko'rishimgiz mumkin \n" .
-                "Новый пассажир забронировал {$seats} место, можете посмотреть в своем заказе";
+                "Yangi yo‘lovchi {$seats} joy bron qildi.\n" .
+                "Новый пассажир забронировал {$seats} место.";
 
             $messagePassenger =
                 "{$from} → {$to}\n{$seats} ta joy bron qildingiz!\n" .
