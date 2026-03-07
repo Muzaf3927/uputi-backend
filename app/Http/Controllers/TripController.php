@@ -448,6 +448,10 @@ class TripController extends Controller
             ->whereNotNull('from_lat')
             ->whereNotNull('from_lng')
 
+            // 👇 минимум 2 слова в адресе
+            ->where('from', 'like', '% %')
+            ->where('to', 'like', '% %')
+
             // быстрый фильтр
             ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
             ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
@@ -461,7 +465,7 @@ class TripController extends Controller
             ->with(['user.car'])
 
             ->orderBy('distance')
-            ->paginate(10);
+            ->paginate(25);
 
         return response()->json([
             'items' => $trips->items(),
@@ -473,8 +477,6 @@ class TripController extends Controller
             ],
         ]);
     }
-
-
 
 
     public function searchPassengerByAddress(Request $request)
@@ -554,18 +556,19 @@ class TripController extends Controller
             ->whereNotNull('from_lat')
             ->whereNotNull('from_lng')
 
-            // быстрый отсев
+            ->where('from', 'like', '% %')
+            ->where('to', 'like', '% %')
+
             ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
             ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
 
-            // точный радиус
             ->select('trips.*')
             ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
             ->whereRaw("$haversine <= ?", [$lat, $lng, $lat, $radius])
 
-            ->with(['user']) // пассажир
+            ->with(['user'])
             ->orderBy('distance')
-            ->paginate(50);
+            ->paginate(25);
 
         return response()->json([
             'items' => $trips->items(),
