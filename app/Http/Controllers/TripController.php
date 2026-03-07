@@ -449,8 +449,8 @@ class TripController extends Controller
             ->whereNotNull('from_lng')
 
             // 👇 минимум 2 слова в адресе
-            ->where('from', 'like', '% %')
-            ->where('to', 'like', '% %')
+            ->where('from_address_normalized', 'like', '% %')
+            ->where('to_address_normalized', 'like', '% %')
 
             // быстрый фильтр
             ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
@@ -556,8 +556,9 @@ class TripController extends Controller
             ->whereNotNull('from_lat')
             ->whereNotNull('from_lng')
 
-            ->where('from', 'like', '% %')
-            ->where('to', 'like', '% %')
+            // 👇 минимум 2 слова в адресе
+            ->where('from_address_normalized', 'like', '% %')
+            ->where('to_address_normalized', 'like', '% %')
 
             ->whereBetween('from_lat', [$lat - $latRange, $lat + $latRange])
             ->whereBetween('from_lng', [$lng - $lngRange, $lng + $lngRange])
