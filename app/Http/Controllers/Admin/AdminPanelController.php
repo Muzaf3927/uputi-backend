@@ -49,7 +49,7 @@ class AdminPanelController extends Controller
         // Telegram уведомление
         if ($user->telegram_chat_id) {
 
-            $message = "💰Balansingiz **{$user->balance}** so'mga o‘zgardi\n" .
+            $message = "💰Balansingiz {$user->balance} so'mga o‘zgardi\n" .
                 "Ваш баланс изменился на {$user->balance} сум";
 
             dispatch(new SendTelegramNotificationJob(

@@ -68,12 +68,12 @@ class UserController extends Controller
                     ->exists();
 
                 if (!$alreadyGiven) {
-                    $user->increment('balance', 50000);
+                    $user->increment('balance', 30000);
 
                     UserGift::create([
                         'user_id' => $user->id,
                         'type'    => 'driver_welcome_bonus',
-                        'amount'  => 50000,
+                        'amount'  => 30000,
                     ]);
                 }
             }
