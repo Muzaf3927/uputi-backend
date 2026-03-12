@@ -176,7 +176,7 @@ class BookingController extends Controller
                 "💰Yangi narx taklifi!\n" .
                 "{$from} → {$to}\n" .
                 "Yo‘lovchi {$seats} joy uchun {$data['offered_price']} taklif qildi. Iltimos o'z zakazingizdan tasdiqlang yoki rad eting.\n" .
-                "Пассажир предлагает {$seats} за {$data['offered_price']} место. Пожалуйста подтвердите или отмените.";
+                "Пассажир предлагает за {$seats} место {$data['offered_price']} . Пожалуйста подтвердите или отмените.";
 
             $messagePassenger =
                 "⏳Sizning taklifingiz junatildi. Haydovchi javobini kuting.\n" .
@@ -186,11 +186,11 @@ class BookingController extends Controller
 
             $messageDriver =
                 "{$from} → {$to}\n" .
-                "Yangi yo‘lovchi {$seats} joy bron qildi.\n" .
+                "✅Yangi yo‘lovchi {$seats} joy bron qildi.\n" .
                 "Новый пассажир забронировал {$seats} место.";
 
             $messagePassenger =
-                "{$from} → {$to}\n{$seats} ta joy bron qildingiz!\n" .
+                "✅Siz {$from} → {$to}\n{$seats} ta joy bron qildingiz!\n" .
                 "Вы забронировали {$seats} место!";
         }
 
@@ -249,7 +249,7 @@ class BookingController extends Controller
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
                 "✅ Haydovchi sizning taklifingizni qabul qildi!\n" .
-                "✅ Водитель принял вашу предложение"
+                "Водитель принял вашу предложение"
             ));
         }
 
@@ -286,7 +286,7 @@ class BookingController extends Controller
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
                 "❌ Haydovchi sizning taklifingizni rad etdi.\n" .
-                "❌ Водитель отклонил ваше ценовое предложение.\n"
+                "Водитель отклонил ваше ценовое предложение.\n"
             ));
         }
 

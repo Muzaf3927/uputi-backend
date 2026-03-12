@@ -45,9 +45,22 @@ class AdminPanelController extends Controller
             }
         });
 
+        $user->refresh();
+        // Telegram уведомление
+        if ($user->telegram_chat_id) {
+
+            $message = "💰Balansingiz o‘zgardi\n\n" .
+                "Ваш баланс изменился {$user->balance}";
+
+            dispatch(new SendTelegramNotificationJob(
+                $user->telegram_chat_id,
+                $message
+            ));
+        }
+
         return response()->json([
             'message' => 'Balance updated successfully',
-            'new_balance' => $user->fresh()->balance,
+            'new_balance' => $user->balance,
         ]);
     }
 
