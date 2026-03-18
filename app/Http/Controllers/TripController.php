@@ -52,21 +52,11 @@ class TripController extends Controller
         */
         if ($user->role === 'driver') {
 
-            $amount = (int) ($data['amount'] ?? 0);
-            $seats  = (int) ($data['seats'] ?? 1);
-
-            $maxTotal = $amount * $seats;
-
-            // берём процент из БД
-            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
-
-            // считаем без float
-            $maxCommission = intdiv($maxTotal * $percent, 100);
-
-            if ($user->balance < $maxCommission) {
+            if ($user->balance < 0) {
+                $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
                 return response()->json([
                     'has_balance' => false,
-                    'required' => $maxCommission,
+                    'required' => 10000,
                     'balance' => $user->balance,
                     'percent' => $percent,
                 ], 422);
