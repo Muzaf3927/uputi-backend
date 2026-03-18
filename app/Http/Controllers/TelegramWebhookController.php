@@ -48,7 +48,7 @@ class TelegramWebhookController extends Controller
                 $this->sendMessage(
                     $chatId,
                     "🔔 Tabriklaymiz! Endi barcha yo'lovchi yoki haydovchi so'rovlari shu yerda aks etadi.\n\n" .
-                    "🔔 Поздравляем! Теперь все запросы пассажиров и водителей будут отображаться здесь."
+                    "Agarda siz haydovchi bo'sangiz, zakaz qo'shish yoki olish uchun profilga kirib mashina qo'shing"
                 );
             }
         }
