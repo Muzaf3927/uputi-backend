@@ -52,18 +52,18 @@ class TripController extends Controller
         */
         if ($user->role === 'driver') {
 
-            $amount = $data['amount'] ?? 0;
-            $seats  = $data['seats'] ?? 1;
+            $amount = (int) ($data['amount'] ?? 0);
+            $seats  = (int) ($data['seats'] ?? 1);
 
-            // Максимальный возможный оборот
             $maxTotal = $amount * $seats;
 
-            // 8% комиссия
-            $maxCommission = round($maxTotal * 0.08, 2);
+            $maxCommission = (int) ($maxTotal * 8 / 100);
 
             if ($user->balance < $maxCommission) {
                 return response()->json([
-                    'has_balance' => false
+                    'has_balance' => false,
+                    'required' => $maxCommission,
+                    'balance' => $user->balance,
                 ], 422);
             }
         }
