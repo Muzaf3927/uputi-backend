@@ -57,13 +57,18 @@ class TripController extends Controller
 
             $maxTotal = $amount * $seats;
 
-            $maxCommission = (int) ($maxTotal * 8 / 100);
+            // берём процент из БД
+            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
+
+            // считаем без float
+            $maxCommission = intdiv($maxTotal * $percent, 100);
 
             if ($user->balance < $maxCommission) {
                 return response()->json([
                     'has_balance' => false,
                     'required' => $maxCommission,
                     'balance' => $user->balance,
+                    'percent' => $percent,
                 ], 422);
             }
         }
