@@ -48,25 +48,18 @@ class BookingController extends Controller
             abort_if($trip->status !== 'active', 423, 'Trip already taken');
 
             // 🔥 берем процент комиссии из БД
-//            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
-//
-//            // считаем комиссию
-//            $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
+            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
 
-            // 🚫 если не хватает на комиссию
+            // считаем комиссию
+            $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
 
-//            if ($driver->balance < $commission) {
-//                return response()->json([
-//                    'balance_sufficient' => false,
-//                    'required_commission' => $commission,
-//                    'balance' => $driver->balance,
-//                    'percent' => $percent,
-//                ], 422);
-//            }
-            if ($driver->balance < 0) {
+            if ($driver->balance < $commission) {
                 return response()->json([
-                    'message' => 'Iltimos balansingizni tuldiring!'
-                ], 423);
+                    'balance_sufficient' => false,
+                    'required_commission' => $commission,
+                    'balance' => $driver->balance,
+                    'percent' => $percent,
+                ], 422);
             }
 
             // проверяем что водитель ещё не назначен
