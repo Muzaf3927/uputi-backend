@@ -39,6 +39,17 @@ class BookingController extends Controller
             ], 423);
         }
 
+        $trip = Trip::findOrFail($data['trip_id']);
+
+        $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
+        $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
+
+        if ($driver->balance < $commission) {
+            return response()->json([
+                'message' => 'Iltimos oldin mashina qushing! Сначало добваьте машину'
+            ], 423);
+        }
+
         DB::transaction(function () use ($data, $driver, &$booking) {
 
             $trip = Trip::lockForUpdate()->findOrFail($data['trip_id']);
@@ -46,21 +57,6 @@ class BookingController extends Controller
 
             abort_if($trip->user_id === $driver->id, 423, 'Cannot take your own trip');
             abort_if($trip->status !== 'active', 423, 'Trip already taken');
-
-            // 🔥 берем процент комиссии из БД
-            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
-
-            // считаем комиссию
-            $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
-
-            if ($driver->balance < $commission) {
-                return response()->json([
-                    'balance_sufficient' => false,
-                    'required_commission' => $commission,
-                    'balance' => $driver->balance,
-                    'percent' => $percent,
-                ], 422);
-            }
 
             // проверяем что водитель ещё не назначен
             $alreadyTaken = $trip->bookings()
