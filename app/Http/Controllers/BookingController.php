@@ -66,7 +66,7 @@ class BookingController extends Controller
             if ($driver->balance < $commission) {
                 return response()->json([
                     'message' => 'Iltimos oldin mashina qushing! Сначало добваьте машину'
-                ], 423);
+                ], 422);
             }
 
             // проверяем что водитель ещё не назначен
