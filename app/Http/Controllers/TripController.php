@@ -75,9 +75,9 @@ class TripController extends Controller
 //        }
         if ($user->role === 'driver') {
 
-            if ($user->balance < 0) {
+            if ($user->balance < 5000) {
                 return response()->json([
-                    'message' => 'Iltimos oldin balansingizni tulldiring!'
+                    'message' => 'Balansingiz 5000 sumdan kam, iltimos balansingizni tulldiring! '
                 ], 423);
             }
         }
