@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendTelegramNotificationJob;
 use App\Models\Booking;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\BookingService;
@@ -37,15 +38,22 @@ class BookingController extends Controller
             $trip = Trip::lockForUpdate()->findOrFail($data['trip_id']);
             // 🔒 блокируем строку чтобы два водителя не взяли заказ
 
-            abort_if($trip->user_id === $driver->id, 422, 'Cannot take your own trip');
-            abort_if($trip->status !== 'active', 422, 'Trip already taken');
+            abort_if($trip->user_id === $driver->id, 423, 'Cannot take your own trip');
+            abort_if($trip->status !== 'active', 423, 'Trip already taken');
 
-            // 🔥 Проверка баланса водителя
-            $commission = round(($trip->amount ?? 0) * 0.08, 2);
+            // 🔥 берем процент комиссии из БД
+            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
 
+            // считаем комиссию
+            $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
+
+            // 🚫 если не хватает на комиссию
             if ($driver->balance < $commission) {
                 return response()->json([
-                    'balance_sufficient' => false
+                    'balance_sufficient' => false,
+                    'required_commission' => $commission,
+                    'balance' => $driver->balance,
+                    'percent' => $percent,
                 ], 422);
             }
 
@@ -54,7 +62,7 @@ class BookingController extends Controller
                 ->where('role', 'driver')
                 ->exists();
 
-            abort_if($alreadyTaken, 422, 'Driver already assigned');
+            abort_if($alreadyTaken, 423, 'Driver already assigned');
 
             $booking = Booking::create([
                 'trip_id'       => $trip->id,
