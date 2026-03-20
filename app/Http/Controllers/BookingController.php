@@ -33,6 +33,12 @@ class BookingController extends Controller
             'trip_id' => 'required|exists:trips,id',
         ]);
 
+        if (!$driver->car) {
+            return response()->json([
+                'message' => 'Iltimos oldin mashina qushing! Сначало добваьте машину'
+            ], 423);
+        }
+
         DB::transaction(function () use ($data, $driver, &$booking) {
 
             $trip = Trip::lockForUpdate()->findOrFail($data['trip_id']);

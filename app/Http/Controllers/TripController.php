@@ -27,7 +27,7 @@ class TripController extends Controller
 
         if ($user->role === 'driver' && !$user->car) {
             return response()->json([
-                'message' => 'Для создания поездки водитель должен добавить машину'
+                'message' => 'Iltimos oldin mashina qushing! Сначало добваьте машину'
             ], 423);
         }
 
