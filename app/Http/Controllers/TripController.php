@@ -76,13 +76,9 @@ class TripController extends Controller
         if ($user->role === 'driver') {
 
             if ($user->balance < 0) {
-                $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
                 return response()->json([
-                    'has_balance' => false,
-                    'required' => 10000,
-                    'balance' => $user->balance,
-                    'percent' => $percent,
-                ], 422);
+                    'message' => 'Iltimos oldin balansingizni tulldiring!'
+                ], 423);
             }
         }
 
