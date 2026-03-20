@@ -54,13 +54,19 @@ class BookingController extends Controller
             $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
 
             // 🚫 если не хватает на комиссию
+//            if ($driver->balance < $commission) {
+//                return response()->json([
+//                    'balance_sufficient' => false,
+//                    'required_commission' => $commission,
+//                    'balance' => $driver->balance,
+//                    'percent' => $percent,
+//                ], 422);
+//            }
+
             if ($driver->balance < $commission) {
                 return response()->json([
-                    'balance_sufficient' => false,
-                    'required_commission' => $commission,
-                    'balance' => $driver->balance,
-                    'percent' => $percent,
-                ], 422);
+                    'message' => 'Iltimos oldin mashina qushing! Сначало добваьте машину'
+                ], 423);
             }
 
             // проверяем что водитель ещё не назначен
