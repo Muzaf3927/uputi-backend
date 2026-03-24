@@ -12,7 +12,7 @@ class SmsThrottle
         $phone = $request->input('phone');
         $ip    = $request->ip();
 
-        if ($phone == 995137896) {
+        if ($phone == 964970842) {
             return response()->json([
                 'message' => 'Siz bloklangansiz'
             ], 403);
