@@ -45,6 +45,8 @@ Route::prefix('admin')->group(function () {
         Route::post('/send-to-all', [AdminPanelController::class, 'sendMessageAll']);
         Route::post('/send-to-user', [AdminPanelController::class, 'sendToUser']);
 
+        // Авто-завершение просроченных поездок (2+ часа назад)
+        Route::post('/trips/auto-complete', [AdminPanelController::class, 'autoCompleteTrips']);
 
         // Выйти
         Route::post('/logout', [AdminAuthController::class, 'logout']);
