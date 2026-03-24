@@ -180,7 +180,7 @@ class AdminPanelController extends Controller
     */
     public function autoCompleteTrips()
     {
-        $cutoff = Carbon::now()->subMinutes(10);
+        $cutoff = Carbon::now('Asia/Tashkent')->subMinutes(10);
 
         $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
 
