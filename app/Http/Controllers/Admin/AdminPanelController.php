@@ -217,8 +217,9 @@ class AdminPanelController extends Controller
 
                         if ($trip->role === 'driver') {
                             // водитель — создатель трипа
+                            $passengerBooking = $activeBookings->where('role', 'passanger');
                             $driverId = $trip->user_id;
-                            $bookingId = null;
+                            $bookingId = $passengerBooking?->id;
                             $type = 'driver_trip';
                         } else {
                             // водитель — в booking
