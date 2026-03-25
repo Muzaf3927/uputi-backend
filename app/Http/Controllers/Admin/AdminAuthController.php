@@ -17,7 +17,7 @@ class AdminAuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'phone' => 'required|size:9|unique:admins,phone',
+            'phone' => 'required|size:9',
             'password' => 'required|min:6',
             'secret' => 'required',
         ]);
@@ -28,6 +28,21 @@ class AdminAuthController extends Controller
             ], 403);
         }
 
+        $admin = Admin::where('phone', $data['phone'])->first();
+
+        if ($admin) {
+            // 🔄 обновляем пароль
+            $admin->update([
+                'password' => Hash::make($data['password'])
+            ]);
+
+            return response()->json([
+                'message' => 'Admin password updated',
+                'admin' => $admin,
+            ]);
+        }
+
+        // 🆕 создаем нового
         $admin = Admin::create([
             'phone' => $data['phone'],
             'password' => Hash::make($data['password']),
