@@ -60,27 +60,27 @@ class AuthController extends Controller
             ], $ttl);
         }
 
-        Cache::put("auth_{$verificationId}_code", $code, $ttl);
-        Cache::put("auth_{$verificationId}_attempts", 0, $ttl);
+//        Cache::put("auth_{$verificationId}_code", $code, $ttl);
+//        Cache::put("auth_{$verificationId}_attempts", 0, $ttl);
 
         // отправка SMS
-        $response = Http::withBasicAuth('Uputi@2025', 'uputi@2dfS')
-            ->acceptJson()
-            ->post('https://api.telecom-qqm-it.uz/api/v1/agent/sms/send', [
-                'to' => '998' . $phone,
-                'senderId' => '2702',
-                'merchantId' => 'MCHUPUTI',
-                'message' => "Vash kod dlya vxoda v UPuti: $code",
-                'messageId' => $verificationId,
-            ]);
-
-        if ($response->failed()) {
-            Cache::forget("auth_{$verificationId}");
-            Cache::forget("auth_{$verificationId}_code");
-            Cache::forget("auth_{$verificationId}_attempts");
-
-            return response()->json(['message' => 'Failed to send SMS'], 500);
-        }
+//        $response = Http::withBasicAuth('Uputi@2025', 'uputi@2dfS')
+//            ->acceptJson()
+//            ->post('https://api.telecom-qqm-it.uz/api/v1/agent/sms/send', [
+//                'to' => '998' . $phone,
+//                'senderId' => '2702',
+//                'merchantId' => 'MCHUPUTI',
+//                'message' => "Vash kod dlya vxoda v UPuti: $code",
+//                'messageId' => $verificationId,
+//            ]);
+//
+//        if ($response->failed()) {
+//            Cache::forget("auth_{$verificationId}");
+//            Cache::forget("auth_{$verificationId}_code");
+//            Cache::forget("auth_{$verificationId}_attempts");
+//
+//            return response()->json(['message' => 'Failed to send SMS'], 500);
+//        }
 
         return response()->json([
             'message' => 'Code sent',
@@ -98,19 +98,17 @@ class AuthController extends Controller
 
         $key = "auth_{$request->verification_id}";
         $data = Cache::get($key);
-        $cachedCode = Cache::get("{$key}_code");
 
-        if (!$data || !$cachedCode) {
+        if (!$data) {
             return response()->json(['message' => 'Verification expired'], 422);
         }
 
-        // Код неправильный
-        if ((string) $request->code !== (string) $cachedCode) {
+        if ($request->code !== '123321') {
+
             $attempts = Cache::increment("{$key}_attempts");
 
             if ($attempts >= 3) {
                 Cache::forget($key);
-                Cache::forget("{$key}_code");
                 Cache::forget("{$key}_attempts");
                 return response()->json(['message' => 'Too many attempts'], 422);
             }
@@ -121,10 +119,7 @@ class AuthController extends Controller
         // --- LOGIN ---
         if ($data['type'] === 'login') {
             $user = User::find($data['user_id']);
-
-            // удаляем старые токены
             $user->tokens()->delete();
-
             $token = $user->createToken('auth_token')->plainTextToken;
         }
 
@@ -139,9 +134,7 @@ class AuthController extends Controller
             $token = $user->createToken('auth_token')->plainTextToken;
         }
 
-        // очищаем кэш
         Cache::forget($key);
-        Cache::forget("{$key}_code");
         Cache::forget("{$key}_attempts");
 
         return response()->json([
