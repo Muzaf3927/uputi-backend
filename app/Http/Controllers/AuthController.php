@@ -3,142 +3,32 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 class AuthController extends Controller
 {
-    // === STEP 1: SEND OTP ===
-    public function start(Request $request)
+    public function login(Request $request)
     {
         $request->validate([
-            'phone' => 'required|size:9',
-            'name'  => 'required|string|max:30', // имя нужно только при регистрации
+            'phone' => 'required|string|size:9',
+            'password' => 'required|string',
         ]);
 
-        // ===== DEV LOGIN WITHOUT OTP =====
-        if ($request->phone === '123123123' || $request->phone === '123123122' || $request->phone === '900038902') {
+        $user = User::where('phone', $request->phone)->first();
 
-            $user = User::where('phone', $request->phone)->first();
-
-            // удаляем старые токены
-            $user->tokens()->delete();
-
-            // создаём новый токен
-            $token = $user->createToken('auth_token')->plainTextToken;
-
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Dev login (no OTP)',
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'user' => $user,
-            ]);
+                'message' => 'Telefon raqam yoki parol noto\'g\'ri',
+            ], 401);
         }
 
-        $phone = $request->phone;
+        $user->tokens()->delete();
 
-        $existingUser = User::where('phone', $phone)->first();
-
-        $code = rand(100000, 999999);
-        $verificationId = (string) Str::uuid();
-        $ttl = now()->addSeconds(180);
-
-        // если юзер есть — сохраняем его id
-        if ($existingUser) {
-            Cache::put("auth_{$verificationId}", [
-                'type' => 'login',
-                'user_id' => $existingUser->id,
-            ], $ttl);
-        } else {
-            // если юзера нет — сохраняем данные для создания
-            Cache::put("auth_{$verificationId}", [
-                'type' => 'register',
-                'name' => $request->name,
-                'phone' => $phone,
-            ], $ttl);
-        }
-
-//        Cache::put("auth_{$verificationId}_code", $code, $ttl);
-//        Cache::put("auth_{$verificationId}_attempts", 0, $ttl);
-
-        // отправка SMS
-//        $response = Http::withBasicAuth('Uputi@2025', 'uputi@2dfS')
-//            ->acceptJson()
-//            ->post('https://api.telecom-qqm-it.uz/api/v1/agent/sms/send', [
-//                'to' => '998' . $phone,
-//                'senderId' => '2702',
-//                'merchantId' => 'MCHUPUTI',
-//                'message' => "Vash kod dlya vxoda v UPuti: $code",
-//                'messageId' => $verificationId,
-//            ]);
-//
-//        if ($response->failed()) {
-//            Cache::forget("auth_{$verificationId}");
-//            Cache::forget("auth_{$verificationId}_code");
-//            Cache::forget("auth_{$verificationId}_attempts");
-//
-//            return response()->json(['message' => 'Failed to send SMS'], 500);
-//        }
+        $token = $user->createToken('auth_token', expiresAt: now()->addMonths(3))->plainTextToken;
 
         return response()->json([
-            'message' => 'Code sent',
-            'verification_id' => $verificationId,
-        ]);
-    }
-
-    // === STEP 2: VERIFY CODE ===
-    public function verify(Request $request)
-    {
-        $request->validate([
-            'verification_id' => 'required|uuid',
-            'code' => 'required|digits:6',
-        ]);
-
-        $key = "auth_{$request->verification_id}";
-        $data = Cache::get($key);
-
-        if (!$data) {
-            return response()->json(['message' => 'Verification expired'], 422);
-        }
-
-        if ($request->code !== '123321') {
-
-            $attempts = Cache::increment("{$key}_attempts");
-
-            if ($attempts >= 3) {
-                Cache::forget($key);
-                Cache::forget("{$key}_attempts");
-                return response()->json(['message' => 'Too many attempts'], 422);
-            }
-
-            return response()->json(['message' => 'Invalid code'], 422);
-        }
-
-        // --- LOGIN ---
-        if ($data['type'] === 'login') {
-            $user = User::find($data['user_id']);
-            $user->tokens()->delete();
-            $token = $user->createToken('auth_token')->plainTextToken;
-        }
-
-        // --- REGISTER ---
-        if ($data['type'] === 'register') {
-            $user = User::create([
-                'name' => $data['name'],
-                'phone' => $data['phone'],
-                'password' => null,
-            ]);
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-        }
-
-        Cache::forget($key);
-        Cache::forget("{$key}_attempts");
-
-        return response()->json([
-            'message' => 'Successful',
+            'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user,

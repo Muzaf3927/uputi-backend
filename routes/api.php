@@ -63,8 +63,7 @@ Route::post('count/download', [DownloadController::class, 'store']);
 //iwon
 Route::post('/callback', [IwonController::class, 'callback']);
 
-Route::post('/auth/start', [AuthController::class, 'start'])->middleware('sms.throttle');
-Route::post('/auth/verify', [AuthController::class, 'verify']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 
 //удаление отделный
 Route::post('/account/delete/send-otp', [AccountDeletionController::class, 'sendOtp']);
