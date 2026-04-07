@@ -69,19 +69,40 @@ class TelegramWebhookController extends Controller
                 return response('ok');
             }
 
-            $data = [
-                'name' => $reg->name,
-                'password' => Hash::make($text),
-                'phone' => $reg->phone,
-                'telegram_chat_id' => $chatId,
-            ];
+            $hashedPassword = Hash::make($text);
 
-            $user = User::where('phone', $reg->phone)->orWhere('telegram_chat_id', $chatId)->first();
+            // Ищем по номеру телефона (приоритет)
+            $userByPhone = User::where('phone', $reg->phone)->first();
+            // Ищем по telegram_chat_id
+            $userByTelegram = User::where('telegram_chat_id', $chatId)->first();
 
-            if ($user) {
-                $user->update($data);
+            if ($userByPhone) {
+                // Номер уже есть — обновляем этого пользователя
+                $userByPhone->update([
+                    'name' => $reg->name,
+                    'password' => $hashedPassword,
+                    'telegram_chat_id' => $chatId,
+                ]);
+
+                // Если был другой пользователь с этим telegram_chat_id — очищаем
+                if ($userByTelegram && $userByTelegram->id !== $userByPhone->id) {
+                    $userByTelegram->update(['telegram_chat_id' => null]);
+                }
+            } elseif ($userByTelegram) {
+                // Telegram уже привязан, но номер новый — обновляем
+                $userByTelegram->update([
+                    'name' => $reg->name,
+                    'password' => $hashedPassword,
+                    'phone' => $reg->phone,
+                ]);
             } else {
-                User::create($data);
+                // Новый пользователь
+                User::create([
+                    'name' => $reg->name,
+                    'password' => $hashedPassword,
+                    'phone' => $reg->phone,
+                    'telegram_chat_id' => $chatId,
+                ]);
             }
 
             $reg->update(['step' => 'done']);
