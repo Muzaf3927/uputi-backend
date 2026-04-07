@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendTelegramNotificationJob;
+use App\Models\Booking;
+use App\Models\Car;
 use App\Models\Commission;
 use App\Models\Setting;
 use App\Models\Trip;
@@ -269,5 +271,225 @@ class AdminPanelController extends Controller
             'trips_completed' => $completedCount,
             'commissions_charged' => $commissionCount,
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📋 Список пользователей с поиском
+    |--------------------------------------------------------------------------
+    */
+    public function users(Request $request)
+    {
+        $query = User::with('car');
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('phone', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($role = $request->query('role')) {
+            $query->where('role', $role);
+        }
+
+        $users = $query->orderByDesc('id')->paginate(20);
+
+        return response()->json($users);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 👤 Детали пользователя
+    |--------------------------------------------------------------------------
+    */
+    public function userShow(User $user)
+    {
+        $user->load('car');
+
+        $activeTrips = Trip::where('user_id', $user->id)
+            ->where('status', '!=', 'completed')
+            ->count();
+
+        $totalTrips = Trip::where('user_id', $user->id)->count();
+
+        $activeBookings = Booking::where('user_id', $user->id)
+            ->where('status', '!=', 'completed')
+            ->count();
+
+        $totalBookings = Booking::where('user_id', $user->id)->count();
+
+        return response()->json([
+            'user' => $user,
+            'stats' => [
+                'active_trips' => $activeTrips,
+                'total_trips' => $totalTrips,
+                'active_bookings' => $activeBookings,
+                'total_bookings' => $totalBookings,
+            ],
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ✏️ Обновить пользователя
+    |--------------------------------------------------------------------------
+    */
+    public function userUpdate(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name'    => 'sometimes|string|max:255',
+            'phone'   => 'sometimes|string|size:9',
+            'role'    => 'sometimes|in:passenger,driver',
+            'balance' => 'sometimes|integer',
+        ]);
+
+        $user->update($data);
+
+        return response()->json($user->fresh()->load('car'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🚗 Обновить машину пользователя
+    |--------------------------------------------------------------------------
+    */
+    public function userUpdateCar(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'model'  => 'required|string|max:255',
+            'color'  => 'required|string|max:255',
+            'number' => 'required|string|max:20',
+        ]);
+
+        $car = Car::updateOrCreate(
+            ['user_id' => $user->id],
+            $data
+        );
+
+        return response()->json($car);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🗑️ Удалить машину пользователя
+    |--------------------------------------------------------------------------
+    */
+    public function userDeleteCar(User $user)
+    {
+        Car::where('user_id', $user->id)->delete();
+
+        return response()->json(['message' => 'Car deleted']);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📋 Список поездок
+    |--------------------------------------------------------------------------
+    */
+    public function trips(Request $request)
+    {
+        $query = Trip::with(['user:id,name,phone,role', 'bookings']);
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($role = $request->query('role')) {
+            $query->where('role', $role);
+        }
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('from_address', 'like', "%{$search}%")
+                  ->orWhere('to_address', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($u) use ($search) {
+                      $u->where('phone', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($from = $request->query('from')) {
+            $query->whereDate('date', '>=', $from);
+        }
+        if ($to = $request->query('to')) {
+            $query->whereDate('date', '<=', $to);
+        }
+
+        $trips = $query->orderByDesc('id')->paginate(20);
+
+        return response()->json($trips);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🔍 Детали поездки
+    |--------------------------------------------------------------------------
+    */
+    public function tripShow(Trip $trip)
+    {
+        $trip->load(['user.car', 'bookings.user']);
+
+        return response()->json($trip);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🗑️ Удалить поездку
+    |--------------------------------------------------------------------------
+    */
+    public function tripDelete(Trip $trip)
+    {
+        $trip->bookings()->delete();
+        $trip->delete();
+
+        return response()->json(['message' => 'Trip deleted']);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📋 Список бронирований
+    |--------------------------------------------------------------------------
+    */
+    public function bookings(Request $request)
+    {
+        $query = Booking::with(['trip:id,from_address,to_address,date,time,status', 'user:id,name,phone,role']);
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($search = $request->query('search')) {
+            $query->whereHas('user', function ($u) use ($search) {
+                $u->where('phone', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $bookings = $query->orderByDesc('id')->paginate(20);
+
+        return response()->json($bookings);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🗑️ Удалить бронирование
+    |--------------------------------------------------------------------------
+    */
+    public function bookingDelete(Booking $booking)
+    {
+        $trip = $booking->trip;
+
+        if ($booking->status === 'in_progress' && $trip) {
+            $trip->increment('seats', $booking->seats);
+            if ($trip->status === 'in_progress') {
+                $trip->update(['status' => 'active']);
+            }
+        }
+
+        $booking->delete();
+
+        return response()->json(['message' => 'Booking deleted']);
     }
 }

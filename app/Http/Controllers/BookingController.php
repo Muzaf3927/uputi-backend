@@ -85,10 +85,22 @@ class BookingController extends Controller
         $to   = AddressHelper::short($trip->to_address);
 
         $messagePassenger =
-            "{$from} → {$to}\nHaydovchi topildi, mening zakazlarim bo'limida haydovchi b-n bog'lanishingiz mumkin!\nВодитель нашелся, в разделе мои заказы можете созвониться с водителем!";
+            "{$from} → {$to}\n" .
+            "Haydovchi topildi!\n" .
+            "📞 Haydovchi telefoni: {$driver->phone}\n" .
+            "Mening zakazlarim bo’limida haydovchi b-n bog’lanishingiz mumkin!\n\n" .
+            "Водитель нашелся!\n" .
+            "📞 Телефон водителя: {$driver->phone}\n" .
+            "В разделе мои заказы можете созвониться с водителем!";
 
         $messageDriver =
-            "{$from} → {$to}\nYo‘lovchi sizni kutmoqda, mening bronlarim bo'limida yo'lovchi b-n bog'lanishingiz mumkin!\nПассажир ждет вас, в разделе мои бронирование можете созвониться с пассажиром!";
+            "{$from} → {$to}\n" .
+            "Yo’lovchi sizni kutmoqda!\n" .
+            "📞 Yo’lovchi telefoni: {$passenger->phone}\n" .
+            "Mening bronlarim bo’limida yo’lovchi b-n bog’lanishingiz mumkin!\n\n" .
+            "Пассажир ждет вас!\n" .
+            "📞 Телефон пассажира: {$passenger->phone}\n" .
+            "В разделе мои бронирование можете созвониться с пассажиром!";
 
         if ($passenger?->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
@@ -145,10 +157,8 @@ class BookingController extends Controller
                 'Siz bu zakazni bron qilgansiz'
             );
 
-            // ❌ если обычная бронь — проверяем места
-            if (!$hasOffer) {
-                abort_if($trip->seats < $seats, 422, 'Joy yetarli emas');
-            }
+            // ❌ проверяем места
+            abort_if($trip->seats < $seats, 422, 'Joy yetarli emas');
 
             // 💰 цена
             if ($hasOffer) {
@@ -183,8 +193,12 @@ class BookingController extends Controller
 
             $messageDriver =
                 "{$from} → {$to}\n" .
-                "💰Yo‘lovchi {$seats} joy uchun {$data['offered_price']} taklif qildi. Buyurtmalarim bo'limidan tasdiqlang yoki rad eting.\n" .
-                "Пассажир предлагает за {$seats} место {$data['offered_price']}. В разделе мои заказы подтвердите или отмените.";
+                "💰Yo’lovchi {$seats} joy uchun {$data[‘offered_price’]} taklif qildi.\n" .
+                "📞 Yo’lovchi telefoni: {$passenger->phone}\n" .
+                "Buyurtmalarim bo’limidan tasdiqlang yoki rad eting.\n\n" .
+                "Пассажир предлагает за {$seats} место {$data[‘offered_price’]}.\n" .
+                "📞 Телефон пассажира: {$passenger->phone}\n" .
+                "В разделе мои заказы подтвердите или отмените.";
 
             $messagePassenger =
                 "⏳Sizning taklifingiz junatildi. Haydovchi javobini kuting.\n" .
@@ -194,12 +208,20 @@ class BookingController extends Controller
 
             $messageDriver =
                 "{$from} → {$to}\n" .
-                "✅Yangi yo‘lovchi {$seats} joy bron qildi. Buyurtmalarim bo'limidan yo'lovchi b-n bog'lanishingiz mumkin\n" .
-                "Новый пассажир забронировал {$seats} место. В разделе мои заказы можете созвониться с пассажиром";
+                "✅Yangi yo’lovchi {$seats} joy bron qildi.\n" .
+                "📞 Yo’lovchi telefoni: {$passenger->phone}\n" .
+                "Buyurtmalarim bo’limidan yo’lovchi b-n bog’lanishingiz mumkin\n\n" .
+                "Новый пассажир забронировал {$seats} место.\n" .
+                "📞 Телефон пассажира: {$passenger->phone}\n" .
+                "В разделе мои заказы можете созвониться с пассажиром";
 
             $messagePassenger =
-                "✅Siz {$from} → {$to}\n{$seats} ta joy bron qildingiz! Bronlarim bo'limidan haydovchi b-n bog'lanishingiz mumkin\n" .
-                "Вы забронировали {$seats} место! В разделе мои бронирование можете созвониться с водителем";
+                "✅Siz {$from} → {$to}\n{$seats} ta joy bron qildingiz!\n" .
+                "📞 Haydovchi telefoni: {$driver->phone}\n" .
+                "Bronlarim bo’limidan haydovchi b-n bog’lanishingiz mumkin\n\n" .
+                "Вы забронировали {$seats} место!\n" .
+                "📞 Телефон водителя: {$driver->phone}\n" .
+                "В разделе мои бронирование можете созвониться с водителем";
         }
 
         // 🔔 уведомляем водителя
@@ -256,8 +278,26 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "✅ Haydovchi sizning taklifingizni qabul qildi! Bronlarim bo'limidan haydovchi b-n bog'lanishingiz mumkin\n" .
-                "Водитель принял вашу предложение! В разделе мои бронирование можете созвониться с водителем"
+                "✅ Haydovchi sizning taklifingizni qabul qildi!\n" .
+                "📞 Haydovchi telefoni: {$driver->phone}\n" .
+                "Bronlarim bo'limidan haydovchi b-n bog'lanishingiz mumkin\n\n" .
+                "Водитель принял ваше предложение!\n" .
+                "📞 Телефон водителя: {$driver->phone}\n" .
+                "В разделе мои бронирование можете созвониться с водителем"
+            ));
+        }
+
+        // 🔔 водителю — номер пассажира
+        if ($driver->telegram_chat_id) {
+            dispatch(new SendTelegramNotificationJob(
+                $driver->telegram_chat_id,
+                "{$from} → {$to}\n" .
+                "✅ Siz taklifni qabul qildingiz!\n" .
+                "📞 Yo'lovchi telefoni: {$passenger->phone}\n" .
+                "Buyurtmalarim bo'limidan yo'lovchi b-n bog'lanishingiz mumkin\n\n" .
+                "Вы приняли предложение!\n" .
+                "📞 Телефон пассажира: {$passenger->phone}\n" .
+                "В разделе мои заказы можете созвониться с пассажиром"
             ));
         }
 
@@ -294,7 +334,9 @@ class BookingController extends Controller
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
                 "❌ Haydovchi sizning taklifingizni rad etdi.\n" .
-                "Водитель отклонил ваше ценовое предложение.\n"
+                "📞 Haydovchi telefoni: {$driver->phone}\n\n" .
+                "Водитель отклонил ваше ценовое предложение.\n" .
+                "📞 Телефон водителя: {$driver->phone}"
             ));
         }
 
@@ -325,26 +367,23 @@ class BookingController extends Controller
     {
         // только владелец брони
         abort_if($booking->user_id !== $request->user()->id, 403);
+        $driver = $request->user();
         $trip = Trip::where('id', $booking->trip_id)->first();
         $booking->delete();
         $trip->update(['status' => 'active']);
-
-
 
         $passenger = User::find($trip->user_id);
         $from = AddressHelper::short($trip->from_address);
         $to   = AddressHelper::short($trip->to_address);
 
-        $message =
-            "{$from} → {$to}\n" .
-            "❌ Haydovchi o'z bronini bekor qildi, boshqa haydovchi qidirilmoqda.\n" .
-            "❌ Водитель отменил свой бронь, идёт поиск другого водителя.";
-
-
         if ($passenger && $passenger->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
-                $message
+                "{$from} → {$to}\n" .
+                "❌ Haydovchi o'z bronini bekor qildi, boshqa haydovchi qidirilmoqda.\n" .
+                "📞 Haydovchi telefoni: {$driver->phone}\n\n" .
+                "❌ Водитель отменил свой бронь, идёт поиск другого водителя.\n" .
+                "📞 Телефон водителя: {$driver->phone}"
             ));
         }
 
@@ -357,26 +396,24 @@ class BookingController extends Controller
         if ($booking->user_id !== $request->user()->id) {
             abort(403);
         }
+        $passengerWhoCancel = $request->user();
         $trip = Trip::where('id', $booking->trip_id)->first();
         $trip->increment('seats', $booking->seats);
         $trip->update(['status' => 'active']);
         $booking->delete();
 
-
-        $passenger = User::find($trip->user_id);
+        $driver = User::find($trip->user_id);
         $from = AddressHelper::short($trip->from_address);
         $to   = AddressHelper::short($trip->to_address);
 
-        $message =
-            "{$from} → {$to}\n" .
-            "❌ Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda.\n" .
-            "❌ Пассажир отменил бронь, идёт поиск другого пассажира.";
-
-
-        if ($passenger && $passenger->telegram_chat_id) {
+        if ($driver && $driver->telegram_chat_id) {
             dispatch(new SendTelegramNotificationJob(
-                $passenger->telegram_chat_id,
-                $message
+                $driver->telegram_chat_id,
+                "{$from} → {$to}\n" .
+                "❌ Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda.\n" .
+                "📞 Yo'lovchi telefoni: {$passengerWhoCancel->phone}\n\n" .
+                "❌ Пассажир отменил бронь, идёт поиск другого пассажира.\n" .
+                "📞 Телефон пассажира: {$passengerWhoCancel->phone}"
             ));
         }
 

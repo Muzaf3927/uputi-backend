@@ -45,6 +45,20 @@ Route::prefix('admin')->group(function () {
         Route::post('/send-to-all', [AdminPanelController::class, 'sendMessageAll']);
         Route::post('/send-to-user', [AdminPanelController::class, 'sendToUser']);
 
+        // 📋 Списки
+        Route::get('/users', [AdminPanelController::class, 'users']);
+        Route::get('/users/{user}', [AdminPanelController::class, 'userShow']);
+        Route::put('/users/{user}', [AdminPanelController::class, 'userUpdate']);
+        Route::put('/users/{user}/car', [AdminPanelController::class, 'userUpdateCar']);
+        Route::delete('/users/{user}/car', [AdminPanelController::class, 'userDeleteCar']);
+
+        Route::get('/trips', [AdminPanelController::class, 'trips']);
+        Route::get('/trips/{trip}', [AdminPanelController::class, 'tripShow']);
+        Route::delete('/trips/{trip}', [AdminPanelController::class, 'tripDelete']);
+
+        Route::get('/bookings', [AdminPanelController::class, 'bookings']);
+        Route::delete('/bookings/{booking}', [AdminPanelController::class, 'bookingDelete']);
+
         // Авто-завершение просроченных поездок (2+ часа назад)
         Route::post('/trips/auto-complete', [AdminPanelController::class, 'autoCompleteTrips']);
 

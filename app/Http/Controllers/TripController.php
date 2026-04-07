@@ -365,8 +365,10 @@ class TripController extends Controller
         // 📝 сообщение водителю
         $messageDriver =
             "{$from} → {$to}\n" .
-            "Yo‘lovchi safarni bekor qildi\n" .
-            "Пассажир отменил поездку";
+            "❌ Yo’lovchi safarni bekor qildi\n" .
+            "📞 Yo’lovchi telefoni: {$passenger->phone}\n\n" .
+            "❌ Пассажир отменил поездку\n" .
+            "📞 Телефон пассажира: {$passenger->phone}";
 
         // 🔔 уведомляем водителя
         if ($driver && $driver->telegram_chat_id) {
