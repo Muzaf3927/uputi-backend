@@ -41,15 +41,6 @@ class BookingController extends Controller
 
         $trip = Trip::findOrFail($data['trip_id']);
 
-        $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
-        $commission = round(($trip->amount ?? 0) * ($percent / 100), 2);
-
-        if ($driver->balance < $commission) {
-            return response()->json([
-                'message' => "Iltimos balansingizni $commission sumga tuldiring"
-            ], 423);
-        }
-
         DB::transaction(function () use ($data, $driver, &$booking) {
 
             $trip = Trip::lockForUpdate()->findOrFail($data['trip_id']);
@@ -201,8 +192,11 @@ class BookingController extends Controller
                 "В разделе мои заказы подтвердите или отмените.";
 
             $messagePassenger =
+                "{$from} → {$to}\n" .
                 "⏳Sizning taklifingiz junatildi. Haydovchi javobini kuting.\n" .
-                "Ваше предложение отправлено. Ждите ответ водителя.";
+                "📞 Haydovchi telefoni: {$driver->phone}\n\n" .
+                "Ваше предложение отправлено. Ждите ответ водителя.\n" .
+                "📞 Телефон водителя: {$driver->phone}";
 
         } else {
 
@@ -333,10 +327,8 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "❌ Haydovchi sizning taklifingizni rad etdi.\n" .
-                "📞 Haydovchi telefoni: {$driver->phone}\n\n" .
-                "Водитель отклонил ваше ценовое предложение.\n" .
-                "📞 Телефон водителя: {$driver->phone}"
+                "❌ Haydovchi sizning taklifingizni rad etdi.\n\n" .
+                "Водитель отклонил ваше ценовое предложение."
             ));
         }
 
@@ -380,10 +372,8 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $passenger->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "❌ Haydovchi o'z bronini bekor qildi, boshqa haydovchi qidirilmoqda.\n" .
-                "📞 Haydovchi telefoni: {$driver->phone}\n\n" .
-                "❌ Водитель отменил свой бронь, идёт поиск другого водителя.\n" .
-                "📞 Телефон водителя: {$driver->phone}"
+                "❌ Haydovchi o'z bronini bekor qildi, boshqa haydovchi qidirilmoqda.\n\n" .
+                "❌ Водитель отменил свой бронь, идёт поиск другого водителя."
             ));
         }
 
@@ -410,10 +400,8 @@ class BookingController extends Controller
             dispatch(new SendTelegramNotificationJob(
                 $driver->telegram_chat_id,
                 "{$from} → {$to}\n" .
-                "❌ Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda.\n" .
-                "📞 Yo'lovchi telefoni: {$passengerWhoCancel->phone}\n\n" .
-                "❌ Пассажир отменил бронь, идёт поиск другого пассажира.\n" .
-                "📞 Телефон пассажира: {$passengerWhoCancel->phone}"
+                "❌ Yo'lovchi o'z bronini bekor qildi, boshqa yo'lovchi qidirilmoqda.\n\n" .
+                "❌ Пассажир отменил бронь, идёт поиск другого пассажира."
             ));
         }
 

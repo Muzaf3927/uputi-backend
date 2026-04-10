@@ -59,7 +59,7 @@ class TripController extends Controller
 //            $maxTotal = $amount * $seats;
 //
 //            // берём процент из БД
-//            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
+//            $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 0);
 //
 //            // считаем без float
 //            $maxCommission = intdiv($maxTotal * $percent, 100);
@@ -73,15 +73,6 @@ class TripController extends Controller
 //                ], 422);
 //            }
 //        }
-        if ($user->role === 'driver') {
-
-            if ($user->balance < 5000) {
-                return response()->json([
-                    'message' => 'Balansingiz 5000 sumdan kam, iltimos balansingizni tulldiring! '
-                ], 423);
-            }
-        }
-
         $trip = Trip::create([
             'user_id' => $user->id,
             'role' => $user->role,
@@ -240,7 +231,7 @@ class TripController extends Controller
 
             $totalAmount = $trip->amount ?? 0;
 
-            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 8;
+            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 0;
 
             $commission = round($totalAmount * ($percent / 100), 2);
 
@@ -298,7 +289,7 @@ class TripController extends Controller
                 ->where('status', 'in_progress')
                 ->sum(DB::raw('offered_price * seats'));
 
-            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 8;
+            $percent = Setting::where('key', 'commission_percent')->value('value') ?? 0;
 
             $commission = round($totalAmount * ($percent / 100), 2);
 
@@ -365,10 +356,8 @@ class TripController extends Controller
         // 📝 сообщение водителю
         $messageDriver =
             "{$from} → {$to}\n" .
-            "❌ Yo’lovchi safarni bekor qildi\n" .
-            "📞 Yo’lovchi telefoni: {$passenger->phone}\n\n" .
-            "❌ Пассажир отменил поездку\n" .
-            "📞 Телефон пассажира: {$passenger->phone}";
+            "❌ Yo’lovchi safarni bekor qildi.\n\n" .
+            "❌ Пассажир отменил поездку.";
 
         // 🔔 уведомляем водителя
         if ($driver && $driver->telegram_chat_id) {

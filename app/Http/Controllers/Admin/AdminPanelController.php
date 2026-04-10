@@ -184,7 +184,7 @@ class AdminPanelController extends Controller
     {
         $cutoff = Carbon::now('Asia/Tashkent')->subMinutes(10);
 
-        $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 8);
+        $percent = (int) (Setting::where('key', 'commission_percent')->value('value') ?? 0);
 
         $trips = Trip::where('status', '!=', 'completed')
             ->where(DB::raw("CONCAT(date, ' ', time)"), '<=', $cutoff->format('Y-m-d H:i:s'))
