@@ -52,6 +52,7 @@ Route::prefix('admin')->group(function () {
         Route::put('/users/{user}/car', [AdminPanelController::class, 'userUpdateCar']);
         Route::delete('/users/{user}/car', [AdminPanelController::class, 'userDeleteCar']);
 
+        Route::post('/trips', [AdminPanelController::class, 'createPassengerTrip']);
         Route::get('/trips', [AdminPanelController::class, 'trips']);
         Route::get('/trips/{trip}', [AdminPanelController::class, 'tripShow']);
         Route::delete('/trips/{trip}', [AdminPanelController::class, 'tripDelete']);

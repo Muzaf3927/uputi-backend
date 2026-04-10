@@ -100,10 +100,19 @@ class BookingController extends Controller
             ));
         }
 
+        // Водителю всегда — с номером пассажира
         if ($driver->telegram_chat_id) {
+            $driverMsg = $passenger?->telegram_chat_id
+                ? $messageDriver
+                : "{$from} → {$to}\n" .
+                  "📞 Yo'lovchiga qo'ng'iroq qiling!\n" .
+                  "📞 Yo'lovchi telefoni: {$passenger->phone}\n\n" .
+                  "📞 Позвоните пассажиру!\n" .
+                  "📞 Телефон пассажира: {$passenger->phone}";
+
             dispatch(new SendTelegramNotificationJob(
                 $driver->telegram_chat_id,
-                $messageDriver
+                $driverMsg
             ));
         }
 

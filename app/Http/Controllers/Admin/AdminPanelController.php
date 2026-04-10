@@ -175,6 +175,56 @@ class AdminPanelController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | Создание заказа от имени пассажира
+    |--------------------------------------------------------------------------
+    */
+    public function createPassengerTrip(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+            'name' => 'required|string',
+            'from_address' => 'required|string',
+            'to_address' => 'required|string',
+            'date' => 'required|date',
+            'time' => 'required|string',
+            'seats' => 'required|integer|min:1|max:4',
+            'amount' => 'nullable|numeric|min:0',
+        ]);
+
+        // Найти или создать пассажира по номеру
+        $passenger = User::where('phone', $request->phone)->first();
+
+        if (!$passenger) {
+            $passenger = User::create([
+                'phone' => $request->phone,
+                'name' => $request->name,
+                'role' => 'passenger',
+                'balance' => 0,
+                'rating' => 5.0,
+                'rating_count' => 0,
+            ]);
+        }
+
+        $trip = Trip::create([
+            'user_id' => $passenger->id,
+            'role' => 'passenger',
+            'status' => 'active',
+            'from_address' => $request->from_address,
+            'to_address' => $request->to_address,
+            'date' => $request->date,
+            'time' => $request->time,
+            'amount' => $request->amount ?? 0,
+            'seats' => $request->seats,
+            'comment' => $request->comment,
+        ]);
+
+        return response()->json([
+            'trip' => $trip->load('user'),
+        ], 201);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Авто-завершение просроченных поездок
     |--------------------------------------------------------------------------
     | Завершает все поездки (in_progress), время которых было 2+ часа назад.
